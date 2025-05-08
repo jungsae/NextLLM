@@ -2,6 +2,7 @@
 'use client'; // 클라이언트 컴포넌트임을 명시 (useState, 이벤트 핸들러 사용)
 
 import { useState, FormEvent } from 'react';
+import LoadingOverlay from '@/components/LoadingOverlay';
 
 export default function HomePage() {
   const [prompt, setPrompt] = useState<string>('');
@@ -48,7 +49,9 @@ export default function HomePage() {
   };
 
   return (
-    <div style={{ maxWidth: '700px', margin: 'auto', padding: '20px', fontFamily: 'sans-serif' }}>
+    <div style={{ maxWidth: '700px', margin: 'auto', padding: '20px', fontFamily: 'sans-serif', position: 'relative' }}>
+      {isLoading && <LoadingOverlay />}
+
       <h1>Next.js LLM Prototype</h1>
       <p>로컬 LLM 모델에게 질문해보세요.</p>
 
@@ -58,28 +61,59 @@ export default function HomePage() {
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="여기에 질문을 입력하세요..."
           rows={5}
-          style={{ width: '100%', marginBottom: '10px', padding: '10px', boxSizing: 'border-box', fontSize: '1rem' }}
+          style={{
+            width: '100%',
+            marginBottom: '10px',
+            padding: '10px',
+            boxSizing: 'border-box',
+            fontSize: '1rem',
+            borderRadius: '4px',
+            border: '1px solid #ccc',
+          }}
           disabled={isLoading}
           required
         />
         <button
           type="submit"
           disabled={isLoading}
-          style={{ padding: '10px 20px', fontSize: '1rem', cursor: isLoading ? 'not-allowed' : 'pointer' }}
+          style={{
+            padding: '10px 20px',
+            fontSize: '1rem',
+            cursor: isLoading ? 'not-allowed' : 'pointer',
+            backgroundColor: isLoading ? '#ccc' : '#0070f3',
+            color: 'white',
+            border: 'none',
+            borderRadius: '4px',
+            transition: 'background-color 0.2s',
+          }}
         >
           {isLoading ? '요청 중...' : '전송'}
         </button>
       </form>
 
       {error && (
-        <div style={{ marginTop: '20px', color: 'red', border: '1px solid red', padding: '10px', whiteSpace: 'pre-wrap' }}>
+        <div style={{
+          marginTop: '20px',
+          color: 'red',
+          border: '1px solid red',
+          padding: '10px',
+          whiteSpace: 'pre-wrap',
+          borderRadius: '4px',
+          backgroundColor: '#fff5f5',
+        }}>
           <p><strong>오류 발생:</strong> {error}</p>
         </div>
       )}
 
       {response && (
-        <div style={{ marginTop: '20px', whiteSpace: 'pre-wrap', border: '1px solid #eee', padding: '15px', background: '#f9f9f9', borderRadius: '5px' }}>
-          <h2>모델 응답:</h2>
+        <div style={{
+          marginTop: '20px',
+          padding: '15px',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '4px',
+          whiteSpace: 'pre-wrap',
+        }}>
+          <h3>응답:</h3>
           <p>{response}</p>
         </div>
       )}
