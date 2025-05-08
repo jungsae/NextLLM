@@ -1,103 +1,88 @@
-import Image from "next/image";
+// src/app/page.tsx
+'use client'; // 클라이언트 컴포넌트임을 명시 (useState, 이벤트 핸들러 사용)
 
-export default function Home() {
+import { useState, FormEvent } from 'react';
+
+export default function HomePage() {
+  const [prompt, setPrompt] = useState<string>('');
+  const [response, setResponse] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!prompt.trim() || isLoading) return;
+
+    setIsLoading(true);
+    setResponse('');
+    setError(null);
+
+    try {
+      // Next.js API 라우트 호출 (프론트엔드 -> 백엔드(Next.js))
+      const res = await fetch('/api/llm/ask', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // 나중에 인증 구현 시 여기에 JWT 토큰 추가
+          // 'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ prompt: prompt }),
+      });
+
+      const data = await res.json(); // 응답 본문을 JSON으로 파싱
+
+      if (!res.ok) {
+        // API 라우트에서 에러 응답을 보낸 경우
+        throw new Error(data.error || `API request failed with status ${res.status}`);
+      }
+
+      // 성공 응답 처리
+      setResponse(data.response);
+
+    } catch (err: any) {
+      console.error("API call failed:", err);
+      setError(err.message || 'Failed to fetch response from the API.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div style={{ maxWidth: '700px', margin: 'auto', padding: '20px', fontFamily: 'sans-serif' }}>
+      <h1>Next.js LLM Prototype</h1>
+      <p>로컬 LLM 모델에게 질문해보세요.</p>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <form onSubmit={handleSubmit}>
+        <textarea
+          value={prompt}
+          onChange={(e) => setPrompt(e.target.value)}
+          placeholder="여기에 질문을 입력하세요..."
+          rows={5}
+          style={{ width: '100%', marginBottom: '10px', padding: '10px', boxSizing: 'border-box', fontSize: '1rem' }}
+          disabled={isLoading}
+          required
+        />
+        <button
+          type="submit"
+          disabled={isLoading}
+          style={{ padding: '10px 20px', fontSize: '1rem', cursor: isLoading ? 'not-allowed' : 'pointer' }}
+        >
+          {isLoading ? '요청 중...' : '전송'}
+        </button>
+      </form>
+
+      {error && (
+        <div style={{ marginTop: '20px', color: 'red', border: '1px solid red', padding: '10px', whiteSpace: 'pre-wrap' }}>
+          <p><strong>오류 발생:</strong> {error}</p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      )}
+
+      {response && (
+        <div style={{ marginTop: '20px', whiteSpace: 'pre-wrap', border: '1px solid #eee', padding: '15px', background: '#f9f9f9', borderRadius: '5px' }}>
+          <h2>모델 응답:</h2>
+          <p>{response}</p>
+        </div>
+      )}
     </div>
   );
 }
