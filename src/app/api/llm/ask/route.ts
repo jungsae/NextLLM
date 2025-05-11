@@ -1,6 +1,8 @@
-import axios from 'axios';
 import { NextResponse } from 'next/server';
 import { serverState } from './state';
+
+// Edge Runtime 사용 설정
+export const runtime = 'edge';
 
 // POST 요청만 처리하도록 설정 (다른 메소드 필요시 추가)
 export async function POST(request: Request) {
@@ -43,18 +45,24 @@ export async function POST(request: Request) {
             };
 
             console.log(`[API Route] Forwarding to LLM: ${llmApiUrl} with prompt: "${userPrompt}"`);
-            const response = await axios.post(llmApiUrl, llmPayload, {
+            const response = await fetch(llmApiUrl, {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                timeout: 600000 // 10분으로 타임아웃 증가
+                body: JSON.stringify(llmPayload),
             });
 
-            if (response.data) {
-                console.log(`[API Route] Received from LLM: "${JSON.stringify(response.data).substring(0, 100)}..."`);
-                return NextResponse.json(response.data);
+            if (!response.ok) {
+                throw new Error(`LLM API responded with status ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data) {
+                console.log(`[API Route] Received from LLM: "${JSON.stringify(data).substring(0, 100)}..."`);
+                return NextResponse.json(data);
             } else {
-                console.error('[API Route] Invalid LLM API response structure:', response.data);
+                console.error('[API Route] Invalid LLM API response structure:', data);
                 throw new Error('Invalid response structure from LLM API');
             }
         } finally {
@@ -67,21 +75,16 @@ export async function POST(request: Request) {
         serverState.setProcessing(false);
 
         // 6. 에러 처리
-        console.error('[API Route] Error processing LLM request:', error.response ? `${error.response.status} - ${JSON.stringify(error.response.data)}` : error.message);
+        console.error('[API Route] Error processing LLM request:', error.message);
         let errorMessage = 'Failed to get response from LLM';
         let statusCode = 500;
 
-        if (axios.isAxiosError(error)) {
-            if (error.code === 'ECONNREFUSED') {
-                errorMessage = 'Connection to the local LLM server was refused. Is it running?';
-                statusCode = 503; // Service Unavailable
-            } else if (error.code === 'ETIMEDOUT' || error.response?.status === 504) {
-                errorMessage = 'Request to the local LLM server timed out.';
-                statusCode = 504; // Gateway Timeout
-            } else if (error.response) {
-                errorMessage = `LLM API responded with status ${error.response.status}`;
-                statusCode = 500; // 내부 서버 오류로 처리 (또는 상태 코드 전달)
-            }
+        if (error.message.includes('ECONNREFUSED')) {
+            errorMessage = 'Connection to the local LLM server was refused. Is it running?';
+            statusCode = 503; // Service Unavailable
+        } else if (error.message.includes('timed out') || error.message.includes('504')) {
+            errorMessage = 'Request to the local LLM server timed out.';
+            statusCode = 504; // Gateway Timeout
         }
         return NextResponse.json({ error: errorMessage }, { status: statusCode });
     }
