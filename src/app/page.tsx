@@ -33,12 +33,21 @@ export default function HomePage() {
       const data = await res.json(); // 응답 본문을 JSON으로 파싱
 
       if (!res.ok) {
-        // API 라우트에서 에러 응답을 보낸 경우
+        // 서버가 바쁜 경우
+        if (res.status === 429) {
+          setError(`${data.message} (대기 시간: ${data.queuePosition}초)`);
+          return;
+        }
+        // 기타 에러
         throw new Error(data.error || `API request failed with status ${res.status}`);
       }
 
       // 성공 응답 처리
-      setResponse(data.response);
+      if (data.choices && data.choices.length > 0) {
+        setResponse(data.choices[0].message.content);
+      } else {
+        throw new Error('Invalid response format from LLM API');
+      }
 
     } catch (err: any) {
       console.error("API call failed:", err);

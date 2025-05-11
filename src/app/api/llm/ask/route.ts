@@ -1,9 +1,20 @@
 import axios from 'axios';
 import { NextResponse } from 'next/server';
+import { serverState } from './state';
 
 // POST 요청만 처리하도록 설정 (다른 메소드 필요시 추가)
 export async function POST(request: Request) {
     try {
+        // 서버가 이미 처리 중인지 확인
+        if (serverState.isProcessing()) {
+            const queuePosition = serverState.getQueuePosition();
+            return NextResponse.json({
+                error: 'Server is busy',
+                queuePosition,
+                message: '다른 사용자가 현재 요청을 처리 중입니다. 잠시 후 다시 시도해주세요.'
+            }, { status: 429 });
+        }
+
         // 1. 프론트엔드에서 보낸 요청 본문(JSON) 파싱
         const body = await request.json();
         const userPrompt = body.prompt;
@@ -20,35 +31,41 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'LLM API URL not configured on server' }, { status: 500 });
         }
 
-        // 3. 로컬 LLM API 서버에 보낼 데이터 준비
-        const llmPayload = {
-            messages: [{ role: 'user', content: userPrompt }],
-            mode: 'instruct', // 모델에 맞게 조정 필요 시 변경
-            max_tokens: maxTokens,
-            // stream: false // 스트리밍이 필요하면 true로 설정하고 다르게 처리
-        };
+        // 처리 시작 표시
+        serverState.setProcessing(true);
 
-        // 4. axios를 사용하여 로컬 LLM API 서버에 POST 요청 보내기 (서버 -> 서버 통신)
-        console.log(`[API Route] Forwarding to LLM: ${llmApiUrl} with prompt: "${userPrompt}"`);
-        const response = await axios.post(llmApiUrl, llmPayload, {
-            headers: {
-                'Content-Type': 'application/json',
-                // 미니PC Nginx에서 별도 인증 헤더 요구 시 여기에 추가
-            },
-            timeout: 180000 // 타임아웃 3분 (N100이 느릴 수 있으므로 넉넉하게)
-        });
+        try {
+            // 3. 로컬 LLM API 서버에 보낼 데이터 준비
+            const llmPayload = {
+                messages: [{ role: 'user', content: userPrompt }],
+                mode: 'instruct', // 모델에 맞게 조정 필요 시 변경
+                max_tokens: maxTokens
+            };
 
-        // 5. LLM API 응답 처리 및 프론트엔드에 반환
-        if (response.data && response.data.choices && response.data.choices.length > 0) {
-            const llmResponseContent = response.data.choices[0].message.content;
-            console.log(`[API Route] Received from LLM: "${llmResponseContent.substring(0, 50)}..."`);
-            return NextResponse.json({ response: llmResponseContent });
-        } else {
-            console.error('[API Route] Invalid LLM API response structure:', response.data);
-            throw new Error('Invalid response structure from LLM API');
+            console.log(`[API Route] Forwarding to LLM: ${llmApiUrl} with prompt: "${userPrompt}"`);
+            const response = await axios.post(llmApiUrl, llmPayload, {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                timeout: 600000 // 10분으로 타임아웃 증가
+            });
+
+            if (response.data) {
+                console.log(`[API Route] Received from LLM: "${JSON.stringify(response.data).substring(0, 100)}..."`);
+                return NextResponse.json(response.data);
+            } else {
+                console.error('[API Route] Invalid LLM API response structure:', response.data);
+                throw new Error('Invalid response structure from LLM API');
+            }
+        } finally {
+            // 처리 완료 표시
+            serverState.setProcessing(false);
         }
 
     } catch (error: any) {
+        // 처리 완료 표시
+        serverState.setProcessing(false);
+
         // 6. 에러 처리
         console.error('[API Route] Error processing LLM request:', error.response ? `${error.response.status} - ${JSON.stringify(error.response.data)}` : error.message);
         let errorMessage = 'Failed to get response from LLM';
