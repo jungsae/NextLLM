@@ -2,9 +2,6 @@ import axios from 'axios';
 import { NextResponse } from 'next/server';
 import { serverState } from './state';
 
-// Edge Runtime 설정 제거
-// export const runtime = 'edge';
-
 // POST 요청만 처리하도록 설정 (다른 메소드 필요시 추가)
 export async function POST(request: Request) {
     try {

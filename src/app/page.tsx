@@ -30,7 +30,11 @@ export default function HomePage() {
         body: JSON.stringify({ prompt: prompt }),
       });
 
+      console.log("res", res);
+
       const data = await res.json(); // 응답 본문을 JSON으로 파싱
+
+      console.log("data", data);
 
       if (!res.ok) {
         // 서버가 바쁜 경우
@@ -121,6 +125,7 @@ export default function HomePage() {
           backgroundColor: '#f8f9fa',
           borderRadius: '4px',
           whiteSpace: 'pre-wrap',
+          color: '#000000',
         }}>
           <h3>응답:</h3>
           <p>{response}</p>
