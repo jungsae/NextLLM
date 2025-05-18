@@ -1,25 +1,24 @@
 import { motion } from 'framer-motion';
-import { Card, CardProps } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { scaleIn } from '@/lib/animations';
 import { ReactNode } from 'react';
 
-interface AnimatedCardProps extends CardProps {
-    delay?: number;
-    className?: string;
+interface AnimatedCardProps {
     children: ReactNode;
+    className?: string;
 }
 
-export function AnimatedCard({ className, children, delay = 0, ...props }: AnimatedCardProps) {
+export function AnimatedCard({ children, className }: AnimatedCardProps) {
     return (
         <motion.div
+            variants={scaleIn}
             initial="initial"
             animate="animate"
             exit="exit"
-            variants={scaleIn}
-            transition={{ delay }}
+            className={cn("w-full", className)}
         >
-            <Card className={cn('', className)} {...props}>
+            <Card className="w-full">
                 {children}
             </Card>
         </motion.div>
