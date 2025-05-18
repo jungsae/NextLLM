@@ -2,10 +2,11 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { supabase } from "@/lib/supabase"
+import { createClient } from "@/lib/supabase"
 
 export function AuthForm() {
     const [isLoading, setIsLoading] = useState(false)
+    const supabase = createClient()
 
     const handleGoogleLogin = async () => {
         try {
