@@ -3,40 +3,35 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase"
+import { toast } from "sonner"
 
 export function AuthForm() {
     const [isLoading, setIsLoading] = useState(false)
     const supabase = createClient()
 
-    const handleGoogleLogin = async () => {
+    const handleOAuthLogin = async (provider: 'google' | 'github') => {
         try {
             setIsLoading(true)
-            const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'google',
-                options: {
-                    redirectTo: `${window.location.origin}/auth/callback`
-                }
-            })
-            if (error) throw error
-        } catch (error) {
-            console.error('Error:', error)
-        } finally {
-            setIsLoading(false)
-        }
-    }
 
-    const handleGithubLogin = async () => {
-        try {
-            setIsLoading(true)
             const { error } = await supabase.auth.signInWithOAuth({
-                provider: 'github',
+                provider,
                 options: {
-                    redirectTo: `${window.location.origin}/auth/callback`
+                    redirectTo: `${window.location.origin}/auth/callback`,
+                    queryParams: {
+                        access_type: 'offline',
+                        prompt: 'consent',
+                    },
                 }
             })
-            if (error) throw error
+
+            if (error) {
+                throw error
+            }
+
+            toast.success(`${provider === 'google' ? 'Google' : 'GitHub'} 로그인 페이지로 이동합니다.`)
         } catch (error) {
             console.error('Error:', error)
+            toast.error(error instanceof Error ? error.message : '로그인 중 오류가 발생했습니다.')
         } finally {
             setIsLoading(false)
         }
@@ -46,17 +41,17 @@ export function AuthForm() {
         <div className="flex flex-col space-y-4">
             <Button
                 variant="outline"
-                onClick={handleGoogleLogin}
+                onClick={() => handleOAuthLogin('google')}
                 disabled={isLoading}
             >
-                Google로 계속하기
+                {isLoading ? '로그인 중...' : 'Google로 계속하기'}
             </Button>
             <Button
                 variant="outline"
-                onClick={handleGithubLogin}
+                onClick={() => handleOAuthLogin('github')}
                 disabled={isLoading}
             >
-                GitHub로 계속하기
+                {isLoading ? '로그인 중...' : 'GitHub로 계속하기'}
             </Button>
         </div>
     )

@@ -7,8 +7,8 @@ import { cn } from "@/lib/utils";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "LLM 모델",
-  description: "LLM 모델 테스트",
+  title: "LLM App",
+  description: "LLM Application with Next.js",
 };
 
 export default function RootLayout({

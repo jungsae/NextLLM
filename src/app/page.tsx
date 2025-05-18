@@ -1,14 +1,35 @@
 // src/app/page.tsx
 'use client'; // 클라이언트 컴포넌트임을 명시 (useState, 이벤트 핸들러 사용)
 
-import { useState, FormEvent } from 'react';
+import { useState, FormEvent, useEffect } from 'react';
 import LoadingOverlay from '@/components/LoadingOverlay';
+import { useSearchParams, useRouter } from "next/navigation"
+import { toast, Toaster } from "sonner"
 
 export default function HomePage() {
   const [prompt, setPrompt] = useState<string>('');
   const [response, setResponse] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams()
+  const router = useRouter()
+
+  useEffect(() => {
+    const message = searchParams.get('message')
+    if (message === 'login_success') {
+      // 토스트 메시지가 이미 표시되었는지 확인
+      const hasShownToast = sessionStorage.getItem('hasShownLoginToast')
+      if (!hasShownToast) {
+        toast.success('로그인에 성공했습니다!', {
+          duration: 3000,
+          position: 'top-center',
+        })
+        sessionStorage.setItem('hasShownLoginToast', 'true')
+        // URL에서 message 파라미터 제거
+        router.replace('/')
+      }
+    }
+  }, []) // 의존성 배열을 비워서 컴포넌트 마운트 시 한 번만 실행
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -63,6 +84,7 @@ export default function HomePage() {
 
   return (
     <div style={{ maxWidth: '700px', margin: 'auto', padding: '20px', fontFamily: 'sans-serif', position: 'relative' }}>
+      <Toaster richColors closeButton />
       {isLoading && <LoadingOverlay />}
 
       <h1>Next.js LLM Prototype</h1>

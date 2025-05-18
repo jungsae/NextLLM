@@ -1,4 +1,4 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 
@@ -14,10 +14,10 @@ export async function GET(request: Request) {
             {
                 cookies: {
                     get: (name: string) => cookieStore.get(name)?.value,
-                    set: (name: string, value: string, options: CookieOptions) => {
+                    set: (name: string, value: string, options: any) => {
                         cookieStore.set({ name, value, ...options })
                     },
-                    remove: (name: string, options: CookieOptions) => {
+                    remove: (name: string, options: any) => {
                         cookieStore.delete({ name, ...options })
                     },
                 },
@@ -26,6 +26,6 @@ export async function GET(request: Request) {
         await supabase.auth.exchangeCodeForSession(code)
     }
 
-    // URL to redirect to after sign in process completes
-    return NextResponse.redirect(new URL('/', requestUrl.origin))
+    // 성공 메시지와 함께 홈페이지로 리디렉션
+    return NextResponse.redirect(new URL('/?message=login_success', requestUrl.origin))
 } 
