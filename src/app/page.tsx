@@ -29,7 +29,7 @@ export default function HomePage() {
         router.replace('/')
       }
     }
-  }, []) // 의존성 배열을 비워서 컴포넌트 마운트 시 한 번만 실행
+  }, [router, searchParams]) // 의존성 배열을 비워서 컴포넌트 마운트 시 한 번만 실행
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -48,7 +48,13 @@ export default function HomePage() {
           // 나중에 인증 구현 시 여기에 JWT 토큰 추가
           // 'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ prompt: prompt }),
+        body: JSON.stringify({
+          model: "llama-3-Korean-Bllossom-8B-Q4_K_M",
+          prompt: prompt,
+          max_tokens: 256,
+          temperature: 0.7,
+          priority: 10
+        }),
       });
 
       console.log("res", res);
