@@ -3,50 +3,74 @@
 
 import { useState, FormEvent, useEffect } from 'react';
 import LoadingOverlay from '@/components/LoadingOverlay';
-import { useSearchParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { toast, Toaster } from "sonner"
+import { Button } from "@/components/ui/button"
 
 export default function HomePage() {
   const [prompt, setPrompt] = useState<string>('');
   const [response, setResponse] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const searchParams = useSearchParams()
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   const router = useRouter()
 
   useEffect(() => {
-    const message = searchParams.get('message')
-    if (message === 'login_success') {
-      // 토스트 메시지가 이미 표시되었는지 확인
-      const hasShownToast = sessionStorage.getItem('hasShownLoginToast')
-      if (!hasShownToast) {
-        toast.success('로그인에 성공했습니다!', {
+    // 로그인 상태 확인
+    const checkLoginStatus = async () => {
+      try {
+        const res = await fetch('/api/auth/check');
+        const data = await res.json();
+        setIsLoggedIn(data.isLoggedIn);
+      } catch (error) {
+        console.error('로그인 상태 확인 실패:', error);
+        setIsLoggedIn(false);
+      }
+    };
+
+    checkLoginStatus();
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      const res = await fetch('/api/auth/logout', {
+        method: 'POST',
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        setIsLoggedIn(false);
+        setPrompt('');
+        setResponse('');
+        toast.success('로그아웃되었습니다.', {
           duration: 3000,
           position: 'top-center',
-        })
-        sessionStorage.setItem('hasShownLoginToast', 'true')
-        // URL에서 message 파라미터 제거
-        router.replace('/')
+        });
+      } else {
+        throw new Error(data.message);
       }
+    } catch (error) {
+      console.error('로그아웃 실패:', error);
+      toast.error('로그아웃 중 오류가 발생했습니다.', {
+        duration: 3000,
+        position: 'top-center',
+      });
     }
-  }, [router, searchParams]) // 의존성 배열을 비워서 컴포넌트 마운트 시 한 번만 실행
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!prompt.trim() || isLoading) return;
+    if (!prompt.trim() || isLoading || !isLoggedIn) return;
 
     setIsLoading(true);
     setResponse('');
     setError(null);
 
     try {
-      // Next.js API 라우트 호출 (프론트엔드 -> 백엔드(Next.js))
       const res = await fetch('/api/llm/ask', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // 나중에 인증 구현 시 여기에 JWT 토큰 추가
-          // 'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           model: "llama-3-Korean-Bllossom-8B-Q4_K_M",
@@ -57,23 +81,16 @@ export default function HomePage() {
         }),
       });
 
-      console.log("res", res);
-
-      const data = await res.json(); // 응답 본문을 JSON으로 파싱
-
-      console.log("data", data);
+      const data = await res.json();
 
       if (!res.ok) {
-        // 서버가 바쁜 경우
         if (res.status === 429) {
           setError(`${data.message} (대기 시간: ${data.queuePosition}초)`);
           return;
         }
-        // 기타 에러
         throw new Error(data.error || `API request failed with status ${res.status}`);
       }
 
-      // 성공 응답 처리
       if (data.choices && data.choices.length > 0) {
         setResponse(data.choices[0].message.content);
       } else {
@@ -93,14 +110,51 @@ export default function HomePage() {
       <Toaster richColors closeButton />
       {isLoading && <LoadingOverlay />}
 
-      <h1>Next.js LLM Prototype</h1>
-      <p>로컬 LLM 모델에게 질문해보세요.</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div>
+          <h1>Next.js LLM Prototype</h1>
+          <p>로컬 LLM 모델에게 질문해보세요.</p>
+        </div>
+        {isLoggedIn ? (
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            style={{
+              borderColor: '#dc3545',
+              color: '#dc3545'
+            }}
+            className="hover:bg-red-500 hover:text-white"
+          >
+            로그아웃
+          </Button>
+        ) : (
+          <Button
+            onClick={() => router.push('/auth')}
+            variant="outline"
+          >
+            로그인
+          </Button>
+        )}
+      </div>
+
+      {!isLoggedIn && (
+        <div style={{
+          marginBottom: '20px',
+          padding: '15px',
+          backgroundColor: '#fff3cd',
+          border: '1px solid #ffeeba',
+          borderRadius: '4px',
+          color: '#856404'
+        }}>
+          <p>질문을 하시려면 로그인이 필요합니다.</p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <textarea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="여기에 질문을 입력하세요..."
+          placeholder={isLoggedIn ? "여기에 질문을 입력하세요..." : "로그인이 필요합니다."}
           rows={5}
           style={{
             width: '100%',
@@ -110,18 +164,20 @@ export default function HomePage() {
             fontSize: '1rem',
             borderRadius: '4px',
             border: '1px solid #ccc',
+            backgroundColor: isLoggedIn ? 'white' : '#f5f5f5',
+            cursor: isLoggedIn ? 'text' : 'not-allowed'
           }}
-          disabled={isLoading}
+          disabled={isLoading || !isLoggedIn}
           required
         />
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || !isLoggedIn}
           style={{
             padding: '10px 20px',
             fontSize: '1rem',
-            cursor: isLoading ? 'not-allowed' : 'pointer',
-            backgroundColor: isLoading ? '#ccc' : '#0070f3',
+            cursor: (isLoading || !isLoggedIn) ? 'not-allowed' : 'pointer',
+            backgroundColor: (isLoading || !isLoggedIn) ? '#ccc' : '#0070f3',
             color: 'white',
             border: 'none',
             borderRadius: '4px',
