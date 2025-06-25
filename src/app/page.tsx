@@ -15,7 +15,8 @@ import {
   Sparkles,
   ArrowRight,
   Clock,
-  Activity
+  Activity,
+  ShoppingBag
 } from "lucide-react";
 import { motion } from 'framer-motion';
 import { Navbar } from "@/components/navigation/navbar";
@@ -63,10 +64,10 @@ export default function DashboardPage() {
       gradient: "from-blue-500 to-blue-600"
     },
     {
-      title: "대화 기록",
-      description: "이전 대화 내용을 확인하세요",
-      icon: <MessageSquare className="h-6 w-6" />,
-      href: "/history",
+      title: "상품 보기",
+      description: "크롤링된 상품들을 확인하세요",
+      icon: <ShoppingBag className="h-6 w-6" />,
+      href: "/products",
       color: "bg-green-500",
       gradient: "from-green-500 to-green-600"
     },
@@ -138,9 +139,6 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <h2 className="text-lg font-semibold">환영합니다! 🎉</h2>
-                    <p className="text-muted-foreground">
-                      로컬 LLM 모델과 대화를 시작하거나 다양한 기능을 탐색해보세요.
-                    </p>
                   </div>
                 </div>
               </CardContent>

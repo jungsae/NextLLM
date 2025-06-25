@@ -72,8 +72,8 @@ export function Navbar({ title, showBackButton = true, showHomeButton = true }: 
                 return 'LLM 대시보드';
             case '/chat':
                 return 'LLM 챗봇';
-            case '/history':
-                return '대화 기록';
+            case '/products':
+                return '상품 보기';
             case '/analytics':
                 return '통계 분석';
             case '/settings':
