@@ -32,6 +32,7 @@ export async function GET(request: Request) {
 
         return NextResponse.json({
             isLoggedIn,
+            user: session?.user || null,
             message: isLoggedIn ? '로그인된 상태입니다.' : '로그인이 필요합니다.'
         });
     } catch (error) {
@@ -39,6 +40,7 @@ export async function GET(request: Request) {
         return NextResponse.json(
             {
                 isLoggedIn: false,
+                user: null,
                 message: '로그인 상태 확인 중 오류가 발생했습니다.'
             },
             { status: 500 }

@@ -26,6 +26,6 @@ export async function GET(request: Request) {
         await supabase.auth.exchangeCodeForSession(code)
     }
 
-    // 성공 메시지와 함께 홈페이지로 리디렉션
-    return NextResponse.redirect(new URL('/?message=login_success', requestUrl.origin))
+    // 로그인 성공 후 대시보드로 리디렉션
+    return NextResponse.redirect(new URL('/', requestUrl.origin))
 } 
