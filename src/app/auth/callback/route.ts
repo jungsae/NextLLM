@@ -6,6 +6,8 @@ export async function GET(request: Request) {
     const requestUrl = new URL(request.url)
     const code = requestUrl.searchParams.get('code')
 
+    const supabaseResponse = NextResponse.redirect(new URL('/', requestUrl.origin))
+
     if (code) {
         const cookieStore = await cookies()
         const supabase = createServerClient(
@@ -13,12 +15,14 @@ export async function GET(request: Request) {
             process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
             {
                 cookies: {
-                    get: (name: string) => cookieStore.get(name)?.value,
-                    set: (name: string, value: string, options: any) => {
-                        cookieStore.set({ name, value, ...options })
+                    getAll() {
+                        return cookieStore.getAll()
                     },
-                    remove: (name: string, options: any) => {
-                        cookieStore.delete({ name, ...options })
+                    setAll(cookiesToSet) {
+                        cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+                        cookiesToSet.forEach(({ name, value, options }) =>
+                            supabaseResponse.cookies.set(name, value, options)
+                        )
                     },
                 },
             }
@@ -26,6 +30,5 @@ export async function GET(request: Request) {
         await supabase.auth.exchangeCodeForSession(code)
     }
 
-    // 로그인 성공 후 대시보드로 리디렉션
-    return NextResponse.redirect(new URL('/', requestUrl.origin))
+    return supabaseResponse
 } 
