@@ -5,6 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
     ShoppingBag,
     Tag,
@@ -12,7 +14,13 @@ import {
     Clock,
     CheckCircle,
     XCircle,
-    Eye
+    Eye,
+    Search,
+    Filter,
+    ChevronLeft,
+    ChevronRight,
+    Grid3X3,
+    List
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -51,16 +59,26 @@ export default function ProductsPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [userId, setUserId] = useState<string | null>(null);
+    const [userEmail, setUserEmail] = useState<string | null>(null);
 
-    // 사용자 ID 가져오기
+    // 모달 내 필터링 및 페이지네이션 상태
+    const [searchTerm, setSearchTerm] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState('all');
+    const [selectedStore, setSelectedStore] = useState('all');
+    const [sortBy, setSortBy] = useState('created_at');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+    const [itemsPerPage] = useState(12);
+
+    // 사용자 이메일 가져오기
     useEffect(() => {
         const checkUser = async () => {
             try {
                 const res = await fetch('/api/auth/check');
                 const data = await res.json();
                 if (data.isLoggedIn && data.user) {
-                    setUserId(data.user.id);
+                    setUserEmail(data.user.email);
                 }
             } catch (error) {
                 console.error('사용자 확인 실패:', error);
@@ -71,13 +89,13 @@ export default function ProductsPage() {
 
     // 크롤링 세션 목록 가져오기
     const fetchSessions = async () => {
-        if (!userId) return;
+        if (!userEmail) return;
 
         try {
             setLoading(true);
             setError(null);
 
-            const response = await fetch(`/api/products?userId=${userId}`);
+            const response = await fetch(`/api/products?userEmail=${encodeURIComponent(userEmail)}`);
             const result = await response.json();
 
             if (result.success) {
@@ -95,10 +113,10 @@ export default function ProductsPage() {
     };
 
     useEffect(() => {
-        if (userId) {
+        if (userEmail) {
             fetchSessions();
         }
-    }, [userId]);
+    }, [userEmail]);
 
     // 특정 세션의 상품들 가져오기
     const fetchSessionProducts = async (sessionId: string) => {
@@ -122,8 +140,67 @@ export default function ProductsPage() {
     const handleSessionClick = async (session: CrawlingSession) => {
         setSelectedSession(session);
         setIsModalOpen(true);
+        // 모달 열릴 때 필터 초기화
+        setSearchTerm('');
+        setSelectedCategory('all');
+        setSelectedStore('all');
+        setSortBy('created_at');
+        setSortOrder('desc');
+        setCurrentPage(1);
         await fetchSessionProducts(session.id);
     };
+
+    // 필터링된 상품들
+    const filteredProducts = selectedSessionProducts.filter(product => {
+        const matchesSearch = searchTerm === '' ||
+            product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            product.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            product.store.toLowerCase().includes(searchTerm.toLowerCase());
+
+        const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+        const matchesStore = selectedStore === 'all' || product.store === selectedStore;
+
+        return matchesSearch && matchesCategory && matchesStore;
+    });
+
+    // 정렬된 상품들
+    const sortedProducts = [...filteredProducts].sort((a, b) => {
+        let aValue: any, bValue: any;
+
+        switch (sortBy) {
+            case 'price':
+                aValue = a.price_numeric;
+                bValue = b.price_numeric;
+                break;
+            case 'rating':
+                aValue = a.rating || 0;
+                bValue = b.rating || 0;
+                break;
+            case 'name':
+                aValue = a.name.toLowerCase();
+                bValue = b.name.toLowerCase();
+                break;
+            default:
+                aValue = new Date(a.created_at);
+                bValue = new Date(b.created_at);
+        }
+
+        if (sortOrder === 'asc') {
+            return aValue > bValue ? 1 : -1;
+        } else {
+            return aValue < bValue ? 1 : -1;
+        }
+    });
+
+    // 페이지네이션
+    const totalPages = Math.ceil(sortedProducts.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const currentProducts = sortedProducts.slice(startIndex, endIndex);
+
+    // 고유한 카테고리와 스토어 목록
+    const categories = ['all', ...Array.from(new Set(selectedSessionProducts.map(p => p.category)))];
+    const stores = ['all', ...Array.from(new Set(selectedSessionProducts.map(p => p.store)))];
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString);
@@ -262,74 +339,267 @@ export default function ProductsPage() {
 
                 {/* 상품 상세 모달 */}
                 <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                    <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                    <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden">
                         <DialogHeader>
                             <DialogTitle className="flex items-center gap-2">
                                 <ShoppingBag className="h-5 w-5" />
-                                {selectedSession?.name} - 상품 목록
+                                {selectedSession?.name} - 상품 목록 ({selectedSessionProducts.length}개)
                             </DialogTitle>
                         </DialogHeader>
 
-                        <div className="space-y-4">
-                            {selectedSessionProducts.length === 0 ? (
-                                <div className="text-center py-8">
-                                    <ShoppingBag className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                                    <p className="text-muted-foreground">이 세션에 수집된 상품이 없습니다.</p>
+                        <div className="flex flex-col h-full">
+                            {/* 필터 및 검색 */}
+                            <div className="space-y-4 mb-6">
+                                {/* 검색 */}
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="상품명, 설명, 스토어 검색..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="pl-10"
+                                    />
                                 </div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {selectedSessionProducts.map((product) => (
-                                        <Card key={product.id} className="overflow-hidden">
-                                            <div className="relative">
-                                                <img
-                                                    src={product.image || ''}
-                                                    alt={product.name}
-                                                    className="w-full h-32 object-cover"
-                                                />
-                                                <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs">
-                                                    <Tag className="h-3 w-3 inline mr-1" />
-                                                    {product.category}
-                                                </div>
-                                            </div>
 
-                                            <CardContent className="p-4">
-                                                <h4 className="font-semibold line-clamp-2 mb-2">{product.name}</h4>
-                                                <div className="space-y-2">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-lg font-bold text-primary">
-                                                            {product.price}
-                                                        </span>
-                                                        <span className="text-sm text-muted-foreground">
-                                                            {product.store}
-                                                        </span>
-                                                    </div>
+                                {/* 필터 및 정렬 */}
+                                <div className="flex flex-wrap gap-4 items-center">
+                                    <div className="flex items-center gap-2">
+                                        <Filter className="h-4 w-4" />
+                                        <span className="text-sm font-medium">필터:</span>
+                                    </div>
 
-                                                    {product.description && (
-                                                        <p className="text-sm text-muted-foreground line-clamp-2">
-                                                            {product.description}
-                                                        </p>
-                                                    )}
+                                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                                        <SelectTrigger className="w-32">
+                                            <SelectValue placeholder="카테고리" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {categories.map(category => (
+                                                <SelectItem key={category} value={category}>
+                                                    {category === 'all' ? '전체' : category}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
 
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-xs text-muted-foreground">
-                                                            {product.page_number}페이지
-                                                        </span>
-                                                        <Button
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                window.open(product.url, '_blank');
-                                                            }}
-                                                        >
-                                                            <ExternalLink className="h-3 w-3 mr-1" />
-                                                            보기
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            </CardContent>
-                                        </Card>
-                                    ))}
+                                    <Select value={selectedStore} onValueChange={setSelectedStore}>
+                                        <SelectTrigger className="w-32">
+                                            <SelectValue placeholder="스토어" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {stores.map(store => (
+                                                <SelectItem key={store} value={store}>
+                                                    {store === 'all' ? '전체' : store}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Select value={sortBy} onValueChange={setSortBy}>
+                                        <SelectTrigger className="w-32">
+                                            <SelectValue placeholder="정렬" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="created_at">등록일</SelectItem>
+                                            <SelectItem value="price">가격</SelectItem>
+                                            <SelectItem value="rating">평점</SelectItem>
+                                            <SelectItem value="name">이름</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                                    >
+                                        {sortOrder === 'asc' ? '오름차순' : '내림차순'}
+                                    </Button>
+
+                                    <div className="flex items-center gap-2 ml-auto">
+                                        <Button
+                                            variant={viewMode === 'grid' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setViewMode('grid')}
+                                        >
+                                            <Grid3X3 className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant={viewMode === 'list' ? 'default' : 'outline'}
+                                            size="sm"
+                                            onClick={() => setViewMode('list')}
+                                        >
+                                            <List className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* 결과 정보 */}
+                                <div className="text-sm text-muted-foreground">
+                                    총 {filteredProducts.length}개 상품 중 {startIndex + 1}-{Math.min(endIndex, filteredProducts.length)}개 표시
+                                </div>
+                            </div>
+
+                            {/* 상품 목록 */}
+                            <div className="flex-1 overflow-y-auto">
+                                {currentProducts.length === 0 ? (
+                                    <div className="text-center py-8">
+                                        <ShoppingBag className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                                        <p className="text-muted-foreground">검색 조건에 맞는 상품이 없습니다.</p>
+                                    </div>
+                                ) : (
+                                    <div className={viewMode === 'grid'
+                                        ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+                                        : "space-y-4"
+                                    }>
+                                        {currentProducts.map((product) => (
+                                            <Card key={product.id} className={viewMode === 'list' ? 'flex' : 'overflow-hidden'}>
+                                                {viewMode === 'list' ? (
+                                                    <>
+                                                        <div className="relative w-32 h-32 flex-shrink-0">
+                                                            <img
+                                                                src={product.image || 'https://via.placeholder.com/300x300?text=상품+이미지'}
+                                                                alt={product.name}
+                                                                className="w-full h-full object-cover"
+                                                            />
+                                                            <div className="absolute top-2 right-2 bg-black/50 text-white px-1 py-0.5 rounded text-xs">
+                                                                <Tag className="h-2 w-2 inline mr-1" />
+                                                                {product.category}
+                                                            </div>
+                                                        </div>
+                                                        <CardContent className="flex-1 p-4">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <h4 className="font-semibold line-clamp-2">{product.name}</h4>
+                                                                <Button
+                                                                    variant="outline"
+                                                                    size="sm"
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        window.open(product.url, '_blank');
+                                                                    }}
+                                                                >
+                                                                    <ExternalLink className="h-3 w-3 mr-1" />
+                                                                    보기
+                                                                </Button>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-lg font-bold text-primary">
+                                                                        {product.price}
+                                                                    </span>
+                                                                    <span className="text-sm text-muted-foreground">
+                                                                        {product.store}
+                                                                    </span>
+                                                                </div>
+                                                                {product.description && (
+                                                                    <p className="text-sm text-muted-foreground line-clamp-2">
+                                                                        {product.description}
+                                                                    </p>
+                                                                )}
+                                                                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                                                    <span>{product.page_number}페이지</span>
+                                                                    {product.rating && (
+                                                                        <span>★ {product.rating} ({product.review_count})</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </CardContent>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <div className="relative">
+                                                            <img
+                                                                src={product.image || 'https://via.placeholder.com/300x300?text=상품+이미지'}
+                                                                alt={product.name}
+                                                                className="w-full h-32 object-cover"
+                                                            />
+                                                            <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs">
+                                                                <Tag className="h-3 w-3 inline mr-1" />
+                                                                {product.category}
+                                                            </div>
+                                                        </div>
+
+                                                        <CardContent className="p-4">
+                                                            <h4 className="font-semibold line-clamp-2 mb-2">{product.name}</h4>
+                                                            <div className="space-y-2">
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-lg font-bold text-primary">
+                                                                        {product.price}
+                                                                    </span>
+                                                                    <span className="text-sm text-muted-foreground">
+                                                                        {product.store}
+                                                                    </span>
+                                                                </div>
+
+                                                                {product.description && (
+                                                                    <p className="text-sm text-muted-foreground line-clamp-2">
+                                                                        {product.description}
+                                                                    </p>
+                                                                )}
+
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        {product.page_number}페이지
+                                                                    </span>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        size="sm"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            window.open(product.url, '_blank');
+                                                                        }}
+                                                                    >
+                                                                        <ExternalLink className="h-3 w-3 mr-1" />
+                                                                        보기
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </CardContent>
+                                                    </>
+                                                )}
+                                            </Card>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 페이지네이션 */}
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                                    <div className="text-sm text-muted-foreground">
+                                        페이지 {currentPage} / {totalPages}
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                                            disabled={currentPage === 1}
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </Button>
+
+                                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                            const page = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                                            return (
+                                                <Button
+                                                    key={page}
+                                                    variant={currentPage === page ? 'default' : 'outline'}
+                                                    size="sm"
+                                                    onClick={() => setCurrentPage(page)}
+                                                >
+                                                    {page}
+                                                </Button>
+                                            );
+                                        })}
+
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                                            disabled={currentPage === totalPages}
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 </div>
                             )}
                         </div>

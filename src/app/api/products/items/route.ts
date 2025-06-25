@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
         // 세션 소유자 확인
         const { data: sessionData, error: sessionError } = await supabase
             .from('crawling_sessions')
-            .select('user_id, product_count')
+            .select('user_email, product_count')
             .eq('id', sessionId)
             .single();
 
@@ -40,17 +40,18 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        if (sessionData.user_id !== session.user.id) {
+        if (sessionData.user_email !== session.user.email) {
             return NextResponse.json(
                 { success: false, error: '권한이 없습니다.' },
                 { status: 403 }
             );
         }
 
-        // 상품 데이터에 crawling_session_id 추가
+        // 상품 데이터에 crawling_session_id와 user_email 추가
         const productsWithSession = products.map((product: any) => ({
             ...product,
             crawling_session_id: sessionId,
+            user_email: session.user.email,
             price_numeric: product.price_numeric || parseInt(product.price?.replace(/[^0-9]/g, '') || '0'),
             created_at: new Date().toISOString()
         }));

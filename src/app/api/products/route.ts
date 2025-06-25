@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
         const sessionId = searchParams.get('sessionId');
-        const userId = searchParams.get('userId');
+        const userEmail = searchParams.get('userEmail');
 
         // 인증된 사용자 확인
         const supabaseResponse = NextResponse.next({ request });
@@ -43,15 +43,15 @@ export async function GET(request: NextRequest) {
         }
 
         // 세션 ID가 없으면 사용자의 크롤링 세션 목록 조회
-        if (!userId) {
+        if (!userEmail) {
             return NextResponse.json(
-                { success: false, error: '사용자 ID가 필요합니다.' },
+                { success: false, error: '사용자 이메일이 필요합니다.' },
                 { status: 400 }
             );
         }
 
         // 현재 로그인한 사용자와 요청한 사용자가 같은지 확인
-        if (session.user.id !== userId) {
+        if (session.user.email !== userEmail) {
             return NextResponse.json(
                 { success: false, error: '권한이 없습니다.' },
                 { status: 403 }
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
                 product_count,
                 status
             `)
-            .eq('user_id', userId)
+            .eq('user_email', userEmail)
             .order('created_at', { ascending: false });
 
         if (sessionsError) {
@@ -96,11 +96,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
-        const { name, userId } = body;
+        const { name, userEmail } = body;
 
-        if (!name || !userId) {
+        if (!name || !userEmail) {
             return NextResponse.json(
-                { success: false, error: '세션 이름과 사용자 ID가 필요합니다.' },
+                { success: false, error: '세션 이름과 사용자 이메일이 필요합니다.' },
                 { status: 400 }
             );
         }
@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 현재 로그인한 사용자와 요청한 사용자가 같은지 확인
-        if (session.user.id !== userId) {
+        if (session.user.email !== userEmail) {
             return NextResponse.json(
                 { success: false, error: '권한이 없습니다.' },
                 { status: 403 }
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
             .from('crawling_sessions')
             .insert({
                 name,
-                user_id: userId,
+                user_email: userEmail,
                 status: 'active',
                 product_count: 0
             })
