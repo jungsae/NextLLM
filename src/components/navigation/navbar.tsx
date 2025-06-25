@@ -51,6 +51,48 @@ export function Navbar({ title, showBackButton = true, showHomeButton = true }: 
             const data = await res.json();
 
             if (data.success) {
+                // 클라이언트 측에서도 쿠키 정리
+                const clearCookie = (name: string) => {
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.vercel.app;`;
+                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; secure;`;
+                };
+
+                // 모든 가능한 Supabase 쿠키들 제거
+                clearCookie('sb-access-token');
+                clearCookie('sb-refresh-token');
+                clearCookie('supabase-auth-token');
+                clearCookie('supabase-auth-refresh-token');
+
+                // localStorage와 sessionStorage 정리
+                const clearStorage = () => {
+                    // Supabase 관련 데이터 제거
+                    const keysToRemove = [
+                        'supabase.auth.token',
+                        'supabase.auth.refreshToken',
+                        'supabase.auth.expiresAt',
+                        'supabase.auth.expiresIn',
+                        'supabase.auth.refreshTokenExpiresAt',
+                        'supabase.auth.refreshTokenExpiresIn',
+                        'supabase.auth.provider',
+                        'supabase.auth.providerToken',
+                        'supabase.auth.providerRefreshToken'
+                    ];
+
+                    keysToRemove.forEach(key => {
+                        localStorage.removeItem(key);
+                        sessionStorage.removeItem(key);
+                    });
+
+                    // 애플리케이션 관련 데이터도 정리
+                    localStorage.removeItem('userEmail');
+                    localStorage.removeItem('isLoggedIn');
+                    sessionStorage.removeItem('userEmail');
+                    sessionStorage.removeItem('isLoggedIn');
+                };
+
+                clearStorage();
+
                 setIsLoggedIn(false);
                 setUserEmail('');
                 toast.success('로그아웃되었습니다.');

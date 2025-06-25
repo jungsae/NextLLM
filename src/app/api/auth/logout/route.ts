@@ -19,10 +19,32 @@ export async function POST(request: NextRequest) {
             // Supabase 오류가 있어도 클라이언트 쿠키는 제거
         }
 
-        // 추가로 클라이언트 쿠키도 제거
-        response.cookies.delete('sb-access-token');
-        response.cookies.delete('sb-refresh-token');
-        response.cookies.delete('supabase-auth-token');
+        // 쿠키 삭제를 위한 만료 옵션
+        const expireOptions = {
+            path: '/',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax' as const,
+            httpOnly: true,
+            expires: new Date(0) // 과거 시간으로 설정하여 즉시 만료
+        };
+
+        // Supabase 관련 쿠키들 제거
+        response.cookies.set('sb-access-token', '', expireOptions);
+        response.cookies.set('sb-refresh-token', '', expireOptions);
+        response.cookies.set('supabase-auth-token', '', expireOptions);
+        response.cookies.set('supabase-auth-refresh-token', '', expireOptions);
+
+        // Vercel 환경에서 도메인별 쿠키도 제거
+        if (process.env.NODE_ENV === 'production') {
+            const domainExpireOptions = {
+                ...expireOptions,
+                domain: '.vercel.app'
+            };
+
+            response.cookies.set('sb-access-token', '', domainExpireOptions);
+            response.cookies.set('sb-refresh-token', '', domainExpireOptions);
+            response.cookies.set('supabase-auth-token', '', domainExpireOptions);
+        }
 
         return response;
     } catch (error) {
@@ -34,10 +56,19 @@ export async function POST(request: NextRequest) {
             message: '로그아웃되었습니다.'
         });
 
-        // 쿠키 제거
-        response.cookies.delete('sb-access-token');
-        response.cookies.delete('sb-refresh-token');
-        response.cookies.delete('supabase-auth-token');
+        // 쿠키 제거 (오류 시에도 동일한 옵션 적용)
+        const expireOptions = {
+            path: '/',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax' as const,
+            httpOnly: true,
+            expires: new Date(0)
+        };
+
+        response.cookies.set('sb-access-token', '', expireOptions);
+        response.cookies.set('sb-refresh-token', '', expireOptions);
+        response.cookies.set('supabase-auth-token', '', expireOptions);
+        response.cookies.set('supabase-auth-refresh-token', '', expireOptions);
 
         return response;
     }
