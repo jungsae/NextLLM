@@ -4,9 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from "next/navigation";
 import { toast, Toaster } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ThemeToggle } from "@/components/theme-toggle";
 import {
   MessageSquare,
   Settings,
@@ -20,6 +18,7 @@ import {
   Activity
 } from "lucide-react";
 import { motion } from 'framer-motion';
+import { Navbar } from "@/components/navigation/navbar";
 
 interface DashboardStats {
   totalChats: number;
@@ -30,7 +29,6 @@ interface DashboardStats {
 
 export default function DashboardPage() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [userEmail, setUserEmail] = useState<string>('');
   const [stats] = useState<DashboardStats>({
     totalChats: 0,
     totalTokens: 0,
@@ -46,10 +44,6 @@ export default function DashboardPage() {
         const res = await fetch('/api/auth/check');
         const data = await res.json();
         setIsLoggedIn(data.isLoggedIn);
-
-        if (data.isLoggedIn && data.user) {
-          setUserEmail(data.user.email || '사용자');
-        }
       } catch (error) {
         console.error('로그인 상태 확인 실패:', error);
         setIsLoggedIn(false);
@@ -58,32 +52,6 @@ export default function DashboardPage() {
 
     checkLoginStatus();
   }, []);
-
-  const handleLogout = async () => {
-    try {
-      const res = await fetch('/api/auth/logout', {
-        method: 'POST',
-      });
-      const data = await res.json();
-
-      if (data.success) {
-        setIsLoggedIn(false);
-        setUserEmail('');
-        toast.success('로그아웃되었습니다.', {
-          duration: 3000,
-          position: 'top-center',
-        });
-      } else {
-        throw new Error(data.message);
-      }
-    } catch (error) {
-      console.error('로그아웃 실패:', error);
-      toast.error('로그아웃 중 오류가 발생했습니다.', {
-        duration: 3000,
-        position: 'top-center',
-      });
-    }
-  };
 
   const dashboardCards = [
     {
@@ -151,44 +119,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       <Toaster richColors closeButton />
 
-      {/* 헤더 */}
-      <header className="border-b bg-card">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold">LLM 대시보드</h1>
-                <p className="text-sm text-muted-foreground">
-                  {isLoggedIn ? `${userEmail}님 환영합니다` : '로그인이 필요합니다'}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              {isLoggedIn ? (
-                <Button
-                  onClick={handleLogout}
-                  variant="outline"
-                  size="sm"
-                >
-                  로그아웃
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => router.push('/auth')}
-                  size="sm"
-                >
-                  로그인
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
+      <Navbar />
 
       {/* 메인 콘텐츠 */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

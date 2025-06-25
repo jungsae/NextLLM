@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { toast, Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Send, Bot, User } from "lucide-react";
+import { Send, Bot, User } from "lucide-react";
+import { Navbar } from '@/components/navigation/navbar';
 
 interface Message {
     id: string;
@@ -121,24 +122,7 @@ export default function ChatPage() {
             <Toaster richColors closeButton />
             {isLoading && <LoadingOverlay />}
 
-            {/* 헤더 */}
-            <div className="border-b bg-card">
-                <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => router.push('/')}
-                        >
-                            <ArrowLeft className="h-4 w-4" />
-                        </Button>
-                        <div>
-                            <h1 className="text-xl font-semibold">LLM 챗봇</h1>
-                            <p className="text-sm text-muted-foreground">로컬 LLM 모델과 대화해보세요</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <Navbar />
 
             {/* 채팅 영역 */}
             <div className="max-w-4xl mx-auto px-4 py-6">
