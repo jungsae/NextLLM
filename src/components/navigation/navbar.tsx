@@ -28,6 +28,11 @@ export function Navbar({ title, showBackButton = true, showHomeButton = true }: 
         const checkLoginStatus = async () => {
             try {
                 const res = await fetch('/api/auth/check');
+
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+
                 const data = await res.json();
                 setIsLoggedIn(data.isLoggedIn);
 
@@ -36,7 +41,9 @@ export function Navbar({ title, showBackButton = true, showHomeButton = true }: 
                 }
             } catch (error) {
                 console.error('로그인 상태 확인 실패:', error);
+                // 에러가 발생해도 로그인하지 않은 상태로 처리
                 setIsLoggedIn(false);
+                setUserEmail('');
             }
         };
 

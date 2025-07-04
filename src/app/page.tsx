@@ -43,6 +43,11 @@ export default function DashboardPage() {
     const checkLoginStatus = async () => {
       try {
         const res = await fetch('/api/auth/check');
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
         const data = await res.json();
         setIsLoggedIn(data.isLoggedIn);
       } catch (error) {
@@ -57,7 +62,7 @@ export default function DashboardPage() {
   const dashboardCards = [
     {
       title: "LLM 챗봇",
-      description: "로컬 LLM 모델과 대화해보세요",
+      description: "LLM 모델과 대화해보세요",
       icon: <Bot className="h-6 w-6" />,
       href: "/chat",
       color: "bg-blue-500",

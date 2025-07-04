@@ -1,19 +1,21 @@
 'use client';
 
 import { useState, FormEvent, useEffect } from 'react';
-import LoadingOverlay from '@/components/LoadingOverlay';
 import { useRouter } from "next/navigation";
 import { toast, Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Send, Bot, User } from "lucide-react";
+import { Send, Bot, User, Wifi, WifiOff } from "lucide-react";
 import { Navbar } from '@/components/navigation/navbar';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { Job } from '@/types/job';
 
 interface Message {
     id: string;
     role: 'user' | 'assistant';
     content: string;
     timestamp: Date;
+    jobId?: number;
 }
 
 export default function ChatPage() {
@@ -22,17 +24,29 @@ export default function ChatPage() {
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+    const [currentJob, setCurrentJob] = useState<Job | null>(null);
+    const [userId, setUserId] = useState<string>('');
     const router = useRouter();
+
+    // WebSocket 연결
+    const { isConnected, isConnecting, lastMessage, reconnectAttempts, maxReconnectAttempts, isMaxAttemptsReached, manualReconnect } = useWebSocket(userId);
 
     useEffect(() => {
         // 로그인 상태 확인
         const checkLoginStatus = async () => {
             try {
                 const res = await fetch('/api/auth/check');
+
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+
                 const data = await res.json();
                 setIsLoggedIn(data.isLoggedIn);
 
-                if (!data.isLoggedIn) {
+                if (data.isLoggedIn && data.user) {
+                    setUserId(data.user.id);
+                } else {
                     router.push('/');
                 }
             } catch (error) {
@@ -45,9 +59,45 @@ export default function ChatPage() {
         checkLoginStatus();
     }, [router]);
 
+    // WebSocket 메시지 처리
+    useEffect(() => {
+        if (lastMessage && currentJob) {
+            if (lastMessage.data.jobId === currentJob.id) {
+                switch (lastMessage.type) {
+                    case 'JOB_COMPLETED':
+                        console.log('작업 완료!', lastMessage.data.result);
+                        const assistantMessage: Message = {
+                            id: Date.now().toString(),
+                            role: 'assistant',
+                            content: lastMessage.data.result.content || lastMessage.data.result,
+                            timestamp: new Date(),
+                            jobId: currentJob.id
+                        };
+                        setMessages(prev => [...prev, assistantMessage]);
+                        setCurrentJob(null);
+                        setIsLoading(false);
+                        setError(null);
+                        break;
+
+                    case 'JOB_FAILED':
+                        console.error('작업 실패!', lastMessage.data.error);
+                        setError(lastMessage.data.error || '작업 처리 중 오류가 발생했습니다.');
+                        setCurrentJob(null);
+                        setIsLoading(false);
+                        break;
+
+                    case 'JOB_UPDATE':
+                        console.log('작업 상태 변경:', lastMessage.data.status);
+                        setCurrentJob(prev => prev ? { ...prev, status: lastMessage.data.status } : null);
+                        break;
+                }
+            }
+        }
+    }, [lastMessage, currentJob]);
+
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!prompt.trim() || isLoading || !isLoggedIn) return;
+        if (!prompt.trim() || isLoading || !isLoggedIn || isConnecting || !isConnected || isMaxAttemptsReached) return;
 
         const userMessage: Message = {
             id: Date.now().toString(),
@@ -62,47 +112,56 @@ export default function ChatPage() {
         setError(null);
 
         try {
-            const res = await fetch('/api/llm/ask', {
+            const res = await fetch('/api/jobs', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    model: "llama-3-Korean-Bllossom-8B-Q4_K_M",
-                    prompt: userMessage.content,
+                    messages: [
+                        {
+                            role: 'user',
+                            content: userMessage.content
+                        }
+                    ],
+                    user_id: userId,
+                    priority: 3,
                     max_tokens: 256,
-                    temperature: 0.7,
-                    priority: 10
+                    temperature: 0.7
                 }),
             });
 
             const data = await res.json();
+            console.log("작업 생성 응답:", data);
 
             if (!res.ok) {
-                if (res.status === 429) {
-                    throw new Error(`${data.message} (대기 시간: ${data.queuePosition}초)`);
-                }
                 throw new Error(data.error || `API request failed with status ${res.status}`);
             }
 
-            if (data.choices && data.choices.length > 0) {
-                const assistantMessage: Message = {
-                    id: (Date.now() + 1).toString(),
-                    role: 'assistant',
-                    content: data.choices[0].message.content,
-                    timestamp: new Date()
-                };
-                setMessages(prev => [...prev, assistantMessage]);
+            if (data.success && data.data) {
+                setCurrentJob({
+                    id: data.data.id,
+                    userId: data.data.userId,
+                    status: data.data.status,
+                    priority: 3,
+                    inputData: { prompt: userMessage.content },
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                });
+
+                // 사용자 메시지에 jobId 추가
+                setMessages(prev => prev.map(msg =>
+                    msg.id === userMessage.id ? { ...msg, jobId: data.data.id } : msg
+                ));
             } else {
-                throw new Error('Invalid response format from LLM API');
+                throw new Error('작업 생성에 실패했습니다.');
             }
 
         } catch (err: any) {
-            console.error("API call failed:", err);
-            setError(err.message || 'Failed to fetch response from the API.');
-            toast.error('질문 처리 중 오류가 발생했습니다.');
-        } finally {
+            console.error("작업 생성 실패:", err);
+            setError(err.message || '작업 생성 중 오류가 발생했습니다.');
             setIsLoading(false);
+            toast.error('작업 생성 중 오류가 발생했습니다.');
         }
     };
 
@@ -120,9 +179,45 @@ export default function ChatPage() {
     return (
         <div className="min-h-screen bg-background">
             <Toaster richColors closeButton />
-            {isLoading && <LoadingOverlay />}
 
             <Navbar />
+
+            {/* WebSocket 연결 상태 표시 */}
+            <div className="max-w-4xl mx-auto px-4 py-2">
+                <div className="flex items-center gap-2 text-sm">
+                    {isConnected ? (
+                        <>
+                            <Wifi className="h-4 w-4 text-green-500" />
+                            <span className="text-green-600">실시간 연결됨</span>
+                        </>
+                    ) : isConnecting ? (
+                        <>
+                            <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            <span className="text-blue-600">연결 중...</span>
+                        </>
+                    ) : isMaxAttemptsReached ? (
+                        <div className="flex items-center gap-2">
+                            <WifiOff className="h-4 w-4 text-red-500" />
+                            <span className="text-red-600">연결 실패 - 최대 시도 횟수 초과</span>
+                            <Button
+                                onClick={manualReconnect}
+                                size="sm"
+                                variant="outline"
+                                className="h-6 px-2 text-xs"
+                            >
+                                재연결
+                            </Button>
+                        </div>
+                    ) : (
+                        <>
+                            <WifiOff className="h-4 w-4 text-red-500" />
+                            <span className="text-red-600">
+                                재연결 시도 중... ({reconnectAttempts}/{maxReconnectAttempts})
+                            </span>
+                        </>
+                    )}
+                </div>
+            </div>
 
             {/* 채팅 영역 */}
             <div className="max-w-4xl mx-auto px-4 py-6">
@@ -185,10 +280,15 @@ export default function ChatPage() {
                                         <Bot className="h-4 w-4 text-primary-foreground" />
                                     </div>
                                     <div className="bg-muted rounded-lg px-4 py-2">
-                                        <div className="flex gap-1">
-                                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                            <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex gap-1">
+                                                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
+                                                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                            </div>
+                                            <span className="text-sm text-muted-foreground">
+                                                {currentJob?.status === 'PROCESSING' ? 'AI가 답변을 생성하고 있습니다...' : '작업이 대기열에 등록되었습니다...'}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -201,15 +301,20 @@ export default function ChatPage() {
                                 <textarea
                                     value={prompt}
                                     onChange={(e) => setPrompt(e.target.value)}
-                                    placeholder="질문을 입력하세요..."
+                                    placeholder={
+                                        isConnecting ? "연결 중... 잠시만 기다려주세요." :
+                                            !isConnected && !isMaxAttemptsReached ? "재연결 시도 중... 잠시만 기다려주세요." :
+                                                isMaxAttemptsReached ? "연결 실패 - 재연결 버튼을 클릭하세요." :
+                                                    "질문을 입력하세요..."
+                                    }
                                     rows={2}
                                     className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    disabled={isLoading}
+                                    disabled={isLoading || isConnecting || !isConnected || isMaxAttemptsReached}
                                     required
                                 />
                                 <Button
                                     type="submit"
-                                    disabled={isLoading || !prompt.trim()}
+                                    disabled={isLoading || isConnecting || !prompt.trim() || !isConnected || isMaxAttemptsReached}
                                     size="icon"
                                 >
                                     <Send className="h-4 w-4" />

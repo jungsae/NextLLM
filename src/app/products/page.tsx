@@ -76,12 +76,18 @@ export default function ProductsPage() {
         const checkUser = async () => {
             try {
                 const res = await fetch('/api/auth/check');
+
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+
                 const data = await res.json();
                 if (data.isLoggedIn && data.user) {
                     setUserEmail(data.user.email);
                 }
             } catch (error) {
                 console.error('사용자 확인 실패:', error);
+                setUserEmail(null);
             }
         };
         checkUser();
