@@ -5,8 +5,7 @@ export interface Job {
     priority: number;
     inputData: {
         prompt: string;
-        max_tokens?: number;
-        temperature?: number;
+        // LLM 파라미터는 백엔드에서 관리
     };
     resultData?: {
         id: string;
@@ -37,10 +36,8 @@ export interface JobCreateRequest {
         role: 'user' | 'assistant' | 'system';
         content: string;
     }>;
-    user_id: string;
     priority: number;
-    max_tokens?: number;
-    temperature?: number;
+    // max_tokens와 temperature는 백엔드에서 안전한 기본값으로 관리
 }
 
 export interface JobResponse {

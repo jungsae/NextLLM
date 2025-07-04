@@ -9,7 +9,7 @@ import {
     Sparkles,
     LogOut
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 interface NavbarProps {
@@ -21,92 +21,13 @@ interface NavbarProps {
 export function Navbar({ title, showBackButton = true, showHomeButton = true }: NavbarProps) {
     const router = useRouter();
     const pathname = usePathname();
-    const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-    const [userEmail, setUserEmail] = useState<string>('');
-
-    useEffect(() => {
-        const checkLoginStatus = async () => {
-            try {
-                const res = await fetch('/api/auth/check');
-
-                if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                }
-
-                const data = await res.json();
-                setIsLoggedIn(data.isLoggedIn);
-
-                if (data.isLoggedIn && data.user) {
-                    setUserEmail(data.user.email || '사용자');
-                }
-            } catch (error) {
-                console.error('로그인 상태 확인 실패:', error);
-                // 에러가 발생해도 로그인하지 않은 상태로 처리
-                setIsLoggedIn(false);
-                setUserEmail('');
-            }
-        };
-
-        checkLoginStatus();
-    }, []);
+    const { isLoggedIn, user, logout } = useAuth();
 
     const handleLogout = async () => {
         try {
-            const res = await fetch('/api/auth/logout', {
-                method: 'POST',
-            });
-            const data = await res.json();
-
-            if (data.success) {
-                // 클라이언트 측에서도 쿠키 정리
-                const clearCookie = (name: string) => {
-                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.vercel.app;`;
-                    document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; secure;`;
-                };
-
-                // 모든 가능한 Supabase 쿠키들 제거
-                clearCookie('sb-access-token');
-                clearCookie('sb-refresh-token');
-                clearCookie('supabase-auth-token');
-                clearCookie('supabase-auth-refresh-token');
-
-                // localStorage와 sessionStorage 정리
-                const clearStorage = () => {
-                    // Supabase 관련 데이터 제거
-                    const keysToRemove = [
-                        'supabase.auth.token',
-                        'supabase.auth.refreshToken',
-                        'supabase.auth.expiresAt',
-                        'supabase.auth.expiresIn',
-                        'supabase.auth.refreshTokenExpiresAt',
-                        'supabase.auth.refreshTokenExpiresIn',
-                        'supabase.auth.provider',
-                        'supabase.auth.providerToken',
-                        'supabase.auth.providerRefreshToken'
-                    ];
-
-                    keysToRemove.forEach(key => {
-                        localStorage.removeItem(key);
-                        sessionStorage.removeItem(key);
-                    });
-
-                    // 애플리케이션 관련 데이터도 정리
-                    localStorage.removeItem('userEmail');
-                    localStorage.removeItem('isLoggedIn');
-                    sessionStorage.removeItem('userEmail');
-                    sessionStorage.removeItem('isLoggedIn');
-                };
-
-                clearStorage();
-
-                setIsLoggedIn(false);
-                setUserEmail('');
-                toast.success('로그아웃되었습니다.');
-                router.push('/');
-            } else {
-                throw new Error(data.message);
-            }
+            await logout();
+            toast.success('로그아웃되었습니다.');
+            router.push('/');
         } catch (error) {
             console.error('로그아웃 실패:', error);
             toast.error('로그아웃 중 오류가 발생했습니다.');
@@ -172,9 +93,9 @@ export function Navbar({ title, showBackButton = true, showHomeButton = true }: 
                             </div>
                             <div>
                                 <h1 className="text-xl font-bold">{getPageTitle()}</h1>
-                                {isLoggedIn && (
+                                {isLoggedIn && user && (
                                     <p className="text-sm text-muted-foreground">
-                                        {userEmail}님 환영합니다
+                                        {user.email}님 환영합니다
                                     </p>
                                 )}
                             </div>
@@ -198,6 +119,7 @@ export function Navbar({ title, showBackButton = true, showHomeButton = true }: 
                         ) : (
                             <Button
                                 onClick={() => router.push('/auth')}
+                                variant="outline"
                                 size="sm"
                             >
                                 로그인

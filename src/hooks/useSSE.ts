@@ -31,11 +31,12 @@ export const useSSE = (userId: string) => {
         setError(null);
 
         try {
-            // 백엔드 서버로 직접 연결
-            const backendUrl = process.env.LOCAL_LLM_API_URL || 'http://localhost:8080';
-            const sseUrl = `${backendUrl}/api/sse/${userId}`;
+            // Next.js API 라우트를 통해 SSE 연결 (인증 포함)
+            const protocol = window.location.protocol;
+            const host = window.location.host;
+            const sseUrl = `${protocol}//${host}/api/sse/${userId}`;
 
-            console.log('SSE 연결 시도 (백엔드):', sseUrl);
+            console.log('SSE 연결 시도 (Next.js 프록시):', sseUrl);
             eventSource.current = new EventSource(sseUrl);
 
             eventSource.current.onopen = () => {

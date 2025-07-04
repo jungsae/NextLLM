@@ -9,6 +9,7 @@ import { Send, Bot, User, Wifi, WifiOff } from "lucide-react";
 import { Navbar } from '@/components/navigation/navbar';
 import { useSSE } from '@/hooks/useSSE';
 import { Job } from '@/types/job';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Message {
     id: string;
@@ -23,41 +24,15 @@ export default function ChatPage() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
-    const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
     const [currentJob, setCurrentJob] = useState<Job | null>(null);
-    const [userId, setUserId] = useState<string>('');
     const router = useRouter();
+
+    // 인증 상태 Context 사용
+    const { isLoggedIn, user, loading: authLoading } = useAuth();
+    const userId = user?.id || '';
 
     // SSE 연결
     const { isConnected, isConnecting, lastMessage, error: sseError, manualReconnect } = useSSE(userId);
-
-    useEffect(() => {
-        // 로그인 상태 확인
-        const checkLoginStatus = async () => {
-            try {
-                const res = await fetch('/api/auth/check');
-
-                if (!res.ok) {
-                    throw new Error(`HTTP error! status: ${res.status}`);
-                }
-
-                const data = await res.json();
-                setIsLoggedIn(data.isLoggedIn);
-
-                if (data.isLoggedIn && data.user) {
-                    setUserId(data.user.id);
-                } else {
-                    router.push('/');
-                }
-            } catch (error) {
-                console.error('로그인 상태 확인 실패:', error);
-                setIsLoggedIn(false);
-                router.push('/');
-            }
-        };
-
-        checkLoginStatus();
-    }, [router]);
 
     // SSE 메시지 처리
     useEffect(() => {
@@ -112,22 +87,15 @@ export default function ChatPage() {
         setError(null);
 
         try {
+            // Next.js API 라우트를 통해 Job 생성 요청 (인증 포함)
             const res = await fetch('/api/jobs', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    messages: [
-                        {
-                            role: 'user',
-                            content: userMessage.content
-                        }
-                    ],
-                    user_id: userId,
-                    priority: 3,
-                    max_tokens: 256,
-                    temperature: 0.7
+                    messages: [{ role: 'user', content: userMessage.content }],
+                    priority: 3
                 }),
             });
 
@@ -172,8 +140,12 @@ export default function ChatPage() {
         });
     };
 
-    if (!isLoggedIn) {
+    if (authLoading) {
         return <div>로그인 확인 중...</div>;
+    }
+    if (!isLoggedIn) {
+        router.push('/');
+        return null;
     }
 
     return (

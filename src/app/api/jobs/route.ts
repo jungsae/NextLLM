@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
         }
 
         const body: JobCreateRequest = await request.json();
-        const { messages, priority = 3, max_tokens = 256, temperature = 0.7 } = body;
+        const { messages, priority = 3 } = body;
 
         // 입력값 검증
         if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 백엔드 LLM 서버에 작업 생성 요청
-        const llmApiUrl = process.env.LOCAL_LLM_API_URL || 'https://59d1-183-101-77-17.ngrok-free.app';
+        const llmApiUrl = process.env.LOCAL_LLM_API_URL || 'http://localhost:8080';
         if (!llmApiUrl) {
             throw new ValidationError('LLM API URL이 설정되지 않았습니다.');
         }
@@ -34,21 +34,32 @@ export async function POST(request: NextRequest) {
         const jobPayload = {
             messages: [{ role: 'user', content: userMessage.content }],
             priority: priority,
-            user: {
-                id: user.id,
-                email: user.email
-            },
-            max_tokens: max_tokens,
-            temperature: temperature
+            user_id: user.id
+            // max_tokens와 temperature는 백엔드에서 안전한 기본값으로 설정
         };
 
-        console.log(`[Jobs API] 사용자 ${user.email}(${user.id})가 작업 생성 요청:`, jobPayload);
+        console.log(`[Jobs API] 사용자 ${user.id}가 작업 생성 요청:`, jobPayload);
+
+        // 인증 헤더 준비
+        const authHeaders: Record<string, string> = {
+            'Content-Type': 'application/json',
+        };
+
+        // 쿠키에서 인증 토큰 추출하여 백엔드로 전달
+        const cookies = request.headers.get('cookie');
+        if (cookies) {
+            authHeaders['Cookie'] = cookies;
+        }
+
+        // Authorization 헤더가 있으면 전달
+        const authHeader = request.headers.get('authorization');
+        if (authHeader) {
+            authHeaders['Authorization'] = authHeader;
+        }
 
         const response = await fetch(`${llmApiUrl}/api/jobs`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: authHeaders,
             body: JSON.stringify(jobPayload),
         });
 
@@ -67,8 +78,7 @@ export async function POST(request: NextRequest) {
                 id: jobData.id,
                 status: jobData.status,
                 message: jobData.message,
-                userId: user.id,
-                userEmail: user.email
+                userId: user.id
             }
         });
 

@@ -1,7 +1,7 @@
 // src/app/page.tsx
 'use client'; // 클라이언트 컴포넌트임을 명시 (useState, 이벤트 핸들러 사용)
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from "next/navigation";
 import { toast, Toaster } from "sonner";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { motion } from 'framer-motion';
 import { Navbar } from "@/components/navigation/navbar";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface DashboardStats {
   totalChats: number;
@@ -29,7 +30,7 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const { isLoggedIn } = useAuth();
   const [stats] = useState<DashboardStats>({
     totalChats: 0,
     totalTokens: 0,
@@ -37,27 +38,6 @@ export default function DashboardPage() {
     activeUsers: 1
   });
   const router = useRouter();
-
-  useEffect(() => {
-    // 로그인 상태 확인
-    const checkLoginStatus = async () => {
-      try {
-        const res = await fetch('/api/auth/check');
-
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-
-        const data = await res.json();
-        setIsLoggedIn(data.isLoggedIn);
-      } catch (error) {
-        console.error('로그인 상태 확인 실패:', error);
-        setIsLoggedIn(false);
-      }
-    };
-
-    checkLoginStatus();
-  }, []);
 
   const dashboardCards = [
     {
@@ -201,16 +181,14 @@ export default function DashboardPage() {
               >
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <div className={`p-3 rounded-lg bg-gradient-to-r ${card.gradient} text-white`}>
+                    <div className={`p-3 rounded-lg ${card.color} text-white`}>
                       {card.icon}
                     </div>
-                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <CardTitle className="text-lg mb-2">{card.title}</CardTitle>
+                  <CardTitle className="text-xl">{card.title}</CardTitle>
                   <CardDescription>{card.description}</CardDescription>
-                </CardContent>
+                </CardHeader>
               </Card>
             </motion.div>
           ))}

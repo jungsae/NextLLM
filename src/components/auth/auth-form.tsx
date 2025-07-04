@@ -1,17 +1,52 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { createBrowserClient } from "@supabase/ssr"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import { useAuth } from "@/contexts/AuthContext"
+import { useRouter } from "next/navigation"
 
 export function AuthForm() {
     const [isGoogleLoading, setIsGoogleLoading] = useState(false)
     const [isGithubLoading, setIsGithubLoading] = useState(false)
+    const { refreshAuth } = useAuth()
+    const router = useRouter()
+
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     )
+
+    // 로그인 상태 확인 및 처리
+    useEffect(() => {
+        const checkAuthStatus = async () => {
+            try {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (user) {
+                    // 로그인된 상태면 전역 상태 업데이트
+                    await refreshAuth()
+                    router.push('/')
+                }
+            } catch (error) {
+                console.error('인증 상태 확인 실패:', error)
+            }
+        }
+
+        checkAuthStatus()
+
+        // 인증 상태 변경 감지
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            async (event, session) => {
+                if (event === 'SIGNED_IN' && session?.user) {
+                    await refreshAuth()
+                    router.push('/')
+                }
+            }
+        )
+
+        return () => subscription.unsubscribe()
+    }, [supabase.auth, refreshAuth, router])
 
     const handleGoogleLogin = async () => {
         try {
