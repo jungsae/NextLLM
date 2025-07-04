@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, FormEvent, useEffect, useRef } from 'react';
 import { useRouter } from "next/navigation";
 import { toast, Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -20,52 +20,79 @@ interface Message {
 }
 
 export default function ChatPage() {
-    const [prompt, setPrompt] = useState<string>('');
+    const { isLoggedIn, user, loading: authLoading } = useAuth();
+    const router = useRouter();
     const [messages, setMessages] = useState<Message[]>([]);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
+    const [prompt, setPrompt] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [currentJob, setCurrentJob] = useState<Job | null>(null);
-    const router = useRouter();
+    const lastProcessedMessageRef = useRef<string>('');
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // 인증 상태 Context 사용
-    const { isLoggedIn, user, loading: authLoading } = useAuth();
-    const userId = user?.id || '';
+    const { isConnected, isConnecting, lastMessage, error: sseError, manualReconnect } = useSSE(user?.id || '');
 
-    // SSE 연결
-    const { isConnected, isConnecting, lastMessage, error: sseError, manualReconnect } = useSSE(userId);
+    // 자동 스크롤 함수
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    // 메시지가 추가될 때마다 자동 스크롤
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
 
     // SSE 메시지 처리
     useEffect(() => {
-        if (lastMessage && currentJob) {
-            if (lastMessage.data.jobId === currentJob.id) {
-                switch (lastMessage.type) {
-                    case 'JOB_COMPLETED':
-                        console.log('작업 완료!', lastMessage.data.result);
-                        const assistantMessage: Message = {
-                            id: Date.now().toString(),
-                            role: 'assistant',
-                            content: lastMessage.data.result.content || lastMessage.data.result,
-                            timestamp: new Date(),
-                            jobId: currentJob.id
-                        };
-                        setMessages(prev => [...prev, assistantMessage]);
-                        setCurrentJob(null);
-                        setIsLoading(false);
-                        setError(null);
-                        break;
+        if (lastMessage && currentJob && lastMessage.data.jobId === currentJob.id) {
+            // 메시지 중복 방지를 위한 고유 키 생성
+            const messageKey = `${lastMessage.type}_${lastMessage.data.jobId}_${lastMessage.data.status}`;
 
-                    case 'JOB_FAILED':
-                        console.error('작업 실패!', lastMessage.data.error);
-                        setError(lastMessage.data.error || '작업 처리 중 오류가 발생했습니다.');
-                        setCurrentJob(null);
-                        setIsLoading(false);
-                        break;
+            // 이미 처리된 메시지인지 확인
+            if (lastProcessedMessageRef.current === messageKey) {
+                return;
+            }
 
-                    case 'JOB_UPDATE':
+            // 메시지 키 저장
+            lastProcessedMessageRef.current = messageKey;
+
+            switch (lastMessage.type) {
+                case 'JOB_COMPLETED':
+                    console.log('작업 완료!', lastMessage.data.result);
+                    const assistantMessage: Message = {
+                        id: Date.now().toString(),
+                        role: 'assistant',
+                        content: lastMessage.data.result.content || lastMessage.data.result,
+                        timestamp: new Date(),
+                        jobId: currentJob.id
+                    };
+                    setMessages(prev => [...prev, assistantMessage]);
+                    setCurrentJob(null);
+                    setIsLoading(false);
+                    setError(null);
+                    // 메시지 키 초기화
+                    lastProcessedMessageRef.current = '';
+                    break;
+
+                case 'JOB_FAILED':
+                    console.error('작업 실패!', lastMessage.data.error);
+                    setError(lastMessage.data.error || '작업 처리 중 오류가 발생했습니다.');
+                    setCurrentJob(null);
+                    setIsLoading(false);
+                    // 메시지 키 초기화
+                    lastProcessedMessageRef.current = '';
+                    break;
+
+                case 'JOB_UPDATE':
+                    // 상태가 실제로 변경된 경우에만 업데이트
+                    if (currentJob && currentJob.status !== lastMessage.data.status) {
                         console.log('작업 상태 변경:', lastMessage.data.status);
                         setCurrentJob(prev => prev ? { ...prev, status: lastMessage.data.status } : null);
-                        break;
-                }
+                    } else {
+                        // 상태가 동일한 경우 디버그 레벨로만 로그
+                        console.debug('동일한 상태 업데이트 무시:', lastMessage.data.status);
+                    }
+                    break;
             }
         }
     }, [lastMessage, currentJob]);
@@ -155,34 +182,34 @@ export default function ChatPage() {
             <Navbar />
 
             {/* SSE 연결 상태 표시 */}
-            <div className="max-w-4xl mx-auto px-4 py-2">
-                <div className="flex items-center gap-2 text-sm">
+            <div className="max-w-4xl mx-auto px-2 sm:px-4 py-2">
+                <div className="flex items-center gap-2 text-xs sm:text-sm">
                     {isConnected ? (
                         <>
-                            <Wifi className="h-4 w-4 text-green-500" />
+                            <Wifi className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
                             <span className="text-green-600">실시간 연결됨 (SSE)</span>
                         </>
                     ) : isConnecting ? (
                         <>
-                            <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                            <div className="h-3 w-3 sm:h-4 sm:w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                             <span className="text-blue-600">연결 중...</span>
                         </>
                     ) : sseError ? (
                         <div className="flex items-center gap-2">
-                            <WifiOff className="h-4 w-4 text-red-500" />
+                            <WifiOff className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
                             <span className="text-red-600">연결 실패</span>
                             <Button
                                 onClick={manualReconnect}
                                 size="sm"
                                 variant="outline"
-                                className="h-6 px-2 text-xs"
+                                className="h-5 sm:h-6 px-1 sm:px-2 text-xs"
                             >
                                 재연결
                             </Button>
                         </div>
                     ) : (
                         <>
-                            <WifiOff className="h-4 w-4 text-red-500" />
+                            <WifiOff className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
                             <span className="text-red-600">연결되지 않음</span>
                         </>
                     )}
@@ -190,43 +217,43 @@ export default function ChatPage() {
             </div>
 
             {/* 채팅 영역 */}
-            <div className="max-w-4xl mx-auto px-4 py-6">
-                <Card className="h-[600px] flex flex-col">
-                    <CardHeader className="border-b">
-                        <CardTitle className="flex items-center gap-2">
-                            <Bot className="h-5 w-5" />
+            <div className="max-w-4xl mx-auto px-2 sm:px-4 py-3 sm:py-6 h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)]">
+                <Card className="h-full flex flex-col">
+                    <CardHeader className="border-b flex-shrink-0 p-3 sm:p-6">
+                        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                            <Bot className="h-4 w-4 sm:h-5 sm:w-5" />
                             대화 시작
                         </CardTitle>
                     </CardHeader>
 
-                    <CardContent className="flex-1 flex flex-col p-0">
+                    <CardContent className="flex-1 flex flex-col p-0 min-h-0">
                         {/* 메시지 영역 */}
-                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4 min-h-0">
                             {messages.length === 0 ? (
-                                <div className="text-center text-muted-foreground py-8">
-                                    <Bot className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                                    <p>첫 번째 질문을 해보세요!</p>
+                                <div className="text-center text-muted-foreground py-6 sm:py-8">
+                                    <Bot className="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 opacity-50" />
+                                    <p className="text-sm sm:text-base">첫 번째 질문을 해보세요!</p>
                                 </div>
                             ) : (
                                 messages.map((message) => (
                                     <div
                                         key={message.id}
-                                        className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'
+                                        className={`flex gap-2 sm:gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'
                                             }`}
                                     >
                                         {message.role === 'assistant' && (
-                                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                                                <Bot className="h-4 w-4 text-primary-foreground" />
+                                            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                                                <Bot className="h-3 w-3 sm:h-4 sm:w-4 text-primary-foreground" />
                                             </div>
                                         )}
 
                                         <div
-                                            className={`max-w-[70%] rounded-lg px-4 py-2 ${message.role === 'user'
+                                            className={`max-w-[75%] sm:max-w-[70%] rounded-lg px-3 py-2 sm:px-4 sm:py-2 break-words ${message.role === 'user'
                                                 ? 'bg-primary text-primary-foreground'
                                                 : 'bg-muted'
                                                 }`}
                                         >
-                                            <p className="whitespace-pre-wrap">{message.content}</p>
+                                            <p className="whitespace-pre-wrap break-words text-sm sm:text-base">{message.content}</p>
                                             <p className={`text-xs mt-1 ${message.role === 'user'
                                                 ? 'text-primary-foreground/70'
                                                 : 'text-muted-foreground'
@@ -236,8 +263,8 @@ export default function ChatPage() {
                                         </div>
 
                                         {message.role === 'user' && (
-                                            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                                                <User className="h-4 w-4 text-primary-foreground" />
+                                            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                                                <User className="h-3 w-3 sm:h-4 sm:w-4 text-primary-foreground" />
                                             </div>
                                         )}
                                     </div>
@@ -245,28 +272,31 @@ export default function ChatPage() {
                             )}
 
                             {isLoading && (
-                                <div className="flex gap-3 justify-start">
-                                    <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-                                        <Bot className="h-4 w-4 text-primary-foreground" />
+                                <div className="flex gap-2 sm:gap-3 justify-start">
+                                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                                        <Bot className="h-3 w-3 sm:h-4 sm:w-4 text-primary-foreground" />
                                     </div>
-                                    <div className="bg-muted rounded-lg px-4 py-2">
+                                    <div className="bg-muted rounded-lg px-3 py-2 sm:px-4 sm:py-2">
                                         <div className="flex items-center gap-2">
                                             <div className="flex gap-1">
-                                                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                                                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                                <div className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-muted-foreground rounded-full animate-bounce"></div>
+                                                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                                             </div>
-                                            <span className="text-sm text-muted-foreground">
+                                            <span className="text-xs sm:text-sm text-muted-foreground">
                                                 {currentJob?.status === 'PROCESSING' ? 'AI가 답변을 생성하고 있습니다...' : '작업이 대기열에 등록되었습니다...'}
                                             </span>
                                         </div>
                                     </div>
                                 </div>
                             )}
+
+                            {/* 자동 스크롤을 위한 타겟 */}
+                            <div ref={messagesEndRef} />
                         </div>
 
                         {/* 입력 폼 */}
-                        <div className="border-t p-4">
+                        <div className="border-t p-2 sm:p-4 flex-shrink-0">
                             <form onSubmit={handleSubmit} className="flex gap-2">
                                 <textarea
                                     value={prompt}
@@ -277,7 +307,7 @@ export default function ChatPage() {
                                                 "질문을 입력하세요..."
                                     }
                                     rows={2}
-                                    className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex-1 resize-none rounded-md border border-input bg-background px-2 py-2 sm:px-3 sm:py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                     disabled={isLoading || isConnecting || !isConnected}
                                     required
                                 />
@@ -285,6 +315,7 @@ export default function ChatPage() {
                                     type="submit"
                                     disabled={isLoading || isConnecting || !prompt.trim() || !isConnected}
                                     size="icon"
+                                    className="flex-shrink-0"
                                 >
                                     <Send className="h-4 w-4" />
                                 </Button>

@@ -108,22 +108,22 @@ export default function DashboardPage() {
       <Navbar />
 
       {/* 메인 콘텐츠 */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
         {/* 환영 메시지 */}
         {isLoggedIn && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8"
+            className="mb-4 sm:mb-8"
           >
             <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 border-blue-200 dark:border-blue-800">
-              <CardContent className="p-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
-                    <Sparkles className="h-6 w-6 text-white" />
+              <CardContent className="p-4 sm:p-6">
+                <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="w-8 h-8 sm:w-12 sm:h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                    <Sparkles className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold">환영합니다! 🎉</h2>
+                    <h2 className="text-base sm:text-lg font-semibold">환영합니다! 🎉</h2>
                   </div>
                 </div>
               </CardContent>
@@ -132,7 +132,7 @@ export default function DashboardPage() {
         )}
 
         {/* 통계 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-4 sm:mb-8">
           {statCards.map((stat, index) => (
             <motion.div
               key={stat.title}
@@ -141,15 +141,15 @@ export default function DashboardPage() {
               transition={{ delay: index * 0.1 }}
             >
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="p-3 sm:p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">
                         {stat.title}
                       </p>
-                      <p className="text-2xl font-bold">{stat.value}</p>
+                      <p className="text-lg sm:text-2xl font-bold">{stat.value}</p>
                     </div>
-                    <div className={`p-2 rounded-lg bg-muted ${stat.color}`}>
+                    <div className={`p-1.5 sm:p-2 rounded-lg bg-muted ${stat.color}`}>
                       {stat.icon}
                     </div>
                   </div>
@@ -160,7 +160,7 @@ export default function DashboardPage() {
         </div>
 
         {/* 메인 기능 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-6">
           {dashboardCards.map((card, index) => (
             <motion.div
               key={card.title}
@@ -179,15 +179,15 @@ export default function DashboardPage() {
                   }
                 }}
               >
-                <CardHeader>
+                <CardHeader className="p-4 sm:p-6">
                   <div className="flex items-center justify-between">
-                    <div className={`p-3 rounded-lg ${card.color} text-white`}>
+                    <div className={`p-2 sm:p-3 rounded-lg ${card.color} text-white`}>
                       {card.icon}
                     </div>
-                    <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                   </div>
-                  <CardTitle className="text-xl">{card.title}</CardTitle>
-                  <CardDescription>{card.description}</CardDescription>
+                  <CardTitle className="text-lg sm:text-xl">{card.title}</CardTitle>
+                  <CardDescription className="text-sm">{card.description}</CardDescription>
                 </CardHeader>
               </Card>
             </motion.div>
@@ -199,31 +199,31 @@ export default function DashboardPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="mt-8"
+          className="mt-4 sm:mt-8"
         >
           <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Activity className="h-4 w-4 sm:h-5 sm:w-5" />
                 시스템 상태
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-950/20">
-                  <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                  <span className="text-sm font-medium">LLM 서버</span>
-                  <span className="text-sm text-muted-foreground">정상</span>
+            <CardContent className="p-4 sm:p-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+                <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-green-50 dark:bg-green-950/20">
+                  <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-green-500"></div>
+                  <span className="text-xs sm:text-sm font-medium">LLM 서버</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground">정상</span>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20">
-                  <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                  <span className="text-sm font-medium">데이터베이스</span>
-                  <span className="text-sm text-muted-foreground">연결됨</span>
+                <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20">
+                  <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-blue-500"></div>
+                  <span className="text-xs sm:text-sm font-medium">데이터베이스</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground">연결됨</span>
                 </div>
-                <div className="flex items-center gap-3 p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20">
-                  <div className="w-3 h-3 rounded-full bg-purple-500"></div>
-                  <span className="text-sm font-medium">인증 서비스</span>
-                  <span className="text-sm text-muted-foreground">활성</span>
+                <div className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-lg bg-purple-50 dark:bg-purple-950/20">
+                  <div className="w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-purple-500"></div>
+                  <span className="text-xs sm:text-sm font-medium">인증 서비스</span>
+                  <span className="text-xs sm:text-sm text-muted-foreground">활성</span>
                 </div>
               </div>
             </CardContent>

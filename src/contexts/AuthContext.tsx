@@ -30,6 +30,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
             if (response.ok) {
                 const data = await response.json();
+
+                // 사용자 정보가 유효하지 않은 경우 자동 로그아웃
+                if (!data.isLoggedIn && data.message?.includes('사용자 정보가 유효하지 않습니다')) {
+                    console.log('사용자 정보가 유효하지 않습니다. 자동 로그아웃 처리합니다.');
+                    // 쿠키 정리
+                    await fetch('/api/auth/logout', {
+                        method: 'POST',
+                        credentials: 'include',
+                    });
+                }
+
                 setAuth({
                     isLoggedIn: data.isLoggedIn,
                     user: data.user,

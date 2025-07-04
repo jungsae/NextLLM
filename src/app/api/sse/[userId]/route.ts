@@ -80,8 +80,17 @@ export async function GET(
                             break;
                         }
 
-                        // 백엔드 데이터를 그대로 전달
-                        controller.enqueue(value);
+                        // 스트림이 닫혀있지 않은 경우에만 데이터 전송
+                        try {
+                            controller.enqueue(value);
+                        } catch (error) {
+                            if (error instanceof TypeError && error.message.includes('Controller is already closed')) {
+                                console.log('SSE 스트림이 이미 닫혀있습니다. 연결을 종료합니다.');
+                                break;
+                            } else {
+                                throw error;
+                            }
+                        }
                     }
                 } catch (error) {
                     console.error('SSE 프록시 에러:', error);

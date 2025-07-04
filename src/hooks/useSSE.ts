@@ -67,6 +67,23 @@ export const useSSE = (userId: string) => {
                 console.error('SSE 에러:', error);
                 setIsConnected(false);
                 setIsConnecting(false);
+
+                // 인증 관련 에러인 경우 재연결 시도
+                if (error instanceof Event && error.target) {
+                    const target = error.target as EventSource;
+                    if (target.readyState === EventSource.CLOSED) {
+                        console.log('SSE 연결이 닫혔습니다. 재연결을 시도합니다.');
+                        // 3초 후 재연결 시도
+                        setTimeout(() => {
+                            if (eventSource.current) {
+                                eventSource.current.close();
+                                eventSource.current = null;
+                            }
+                            manualReconnect();
+                        }, 3000);
+                    }
+                }
+
                 setError('SSE 연결에 실패했습니다.');
             };
         } catch (error) {
