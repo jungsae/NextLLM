@@ -462,12 +462,18 @@ export default function ProductsPage() {
                                                 {viewMode === 'list' ? (
                                                     <>
                                                         <div className="relative w-32 h-32 flex-shrink-0">
-                                                            <Image
-                                                                src={product.image || 'https://via.placeholder.com/300x300?text=상품+이미지'}
-                                                                alt={product.name}
-                                                                fill
-                                                                className="object-cover"
-                                                            />
+                                                            {product.image ? (
+                                                                <Image
+                                                                    src={product.image}
+                                                                    alt={product.name}
+                                                                    fill
+                                                                    className="object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                                                    <ShoppingBag className="h-8 w-8 text-gray-400" />
+                                                                </div>
+                                                            )}
                                                             <div className="absolute top-2 right-2 bg-black/50 text-white px-1 py-0.5 rounded text-xs">
                                                                 <Tag className="h-2 w-2 inline mr-1" />
                                                                 {product.category}
@@ -514,12 +520,18 @@ export default function ProductsPage() {
                                                 ) : (
                                                     <>
                                                         <div className="relative w-full h-32">
-                                                            <Image
-                                                                src={product.image || 'https://via.placeholder.com/300x300?text=상품+이미지'}
-                                                                alt={product.name}
-                                                                fill
-                                                                className="object-cover"
-                                                            />
+                                                            {product.image ? (
+                                                                <Image
+                                                                    src={product.image}
+                                                                    alt={product.name}
+                                                                    fill
+                                                                    className="object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                                                                    <ShoppingBag className="h-8 w-8 text-gray-400" />
+                                                                </div>
+                                                            )}
                                                             <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs">
                                                                 <Tag className="h-3 w-3 inline mr-1" />
                                                                 {product.category}
