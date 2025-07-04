@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Send, Bot, User, Wifi, WifiOff } from "lucide-react";
 import { Navbar } from '@/components/navigation/navbar';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useSSE } from '@/hooks/useSSE';
 import { Job } from '@/types/job';
 
 interface Message {
@@ -28,8 +28,8 @@ export default function ChatPage() {
     const [userId, setUserId] = useState<string>('');
     const router = useRouter();
 
-    // WebSocket 연결
-    const { isConnected, isConnecting, lastMessage, reconnectAttempts, maxReconnectAttempts, isMaxAttemptsReached, manualReconnect } = useWebSocket(userId);
+    // SSE 연결
+    const { isConnected, isConnecting, lastMessage, error: sseError, manualReconnect } = useSSE(userId);
 
     useEffect(() => {
         // 로그인 상태 확인
@@ -59,7 +59,7 @@ export default function ChatPage() {
         checkLoginStatus();
     }, [router]);
 
-    // WebSocket 메시지 처리
+    // SSE 메시지 처리
     useEffect(() => {
         if (lastMessage && currentJob) {
             if (lastMessage.data.jobId === currentJob.id) {
@@ -97,7 +97,7 @@ export default function ChatPage() {
 
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!prompt.trim() || isLoading || !isLoggedIn || isConnecting || !isConnected || isMaxAttemptsReached) return;
+        if (!prompt.trim() || isLoading || !isLoggedIn || isConnecting || !isConnected) return;
 
         const userMessage: Message = {
             id: Date.now().toString(),
@@ -182,23 +182,23 @@ export default function ChatPage() {
 
             <Navbar />
 
-            {/* WebSocket 연결 상태 표시 */}
+            {/* SSE 연결 상태 표시 */}
             <div className="max-w-4xl mx-auto px-4 py-2">
                 <div className="flex items-center gap-2 text-sm">
                     {isConnected ? (
                         <>
                             <Wifi className="h-4 w-4 text-green-500" />
-                            <span className="text-green-600">실시간 연결됨</span>
+                            <span className="text-green-600">실시간 연결됨 (SSE)</span>
                         </>
                     ) : isConnecting ? (
                         <>
                             <div className="h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                             <span className="text-blue-600">연결 중...</span>
                         </>
-                    ) : isMaxAttemptsReached ? (
+                    ) : sseError ? (
                         <div className="flex items-center gap-2">
                             <WifiOff className="h-4 w-4 text-red-500" />
-                            <span className="text-red-600">연결 실패 - 최대 시도 횟수 초과</span>
+                            <span className="text-red-600">연결 실패</span>
                             <Button
                                 onClick={manualReconnect}
                                 size="sm"
@@ -211,9 +211,7 @@ export default function ChatPage() {
                     ) : (
                         <>
                             <WifiOff className="h-4 w-4 text-red-500" />
-                            <span className="text-red-600">
-                                재연결 시도 중... ({reconnectAttempts}/{maxReconnectAttempts})
-                            </span>
+                            <span className="text-red-600">연결되지 않음</span>
                         </>
                     )}
                 </div>
@@ -303,18 +301,17 @@ export default function ChatPage() {
                                     onChange={(e) => setPrompt(e.target.value)}
                                     placeholder={
                                         isConnecting ? "연결 중... 잠시만 기다려주세요." :
-                                            !isConnected && !isMaxAttemptsReached ? "재연결 시도 중... 잠시만 기다려주세요." :
-                                                isMaxAttemptsReached ? "연결 실패 - 재연결 버튼을 클릭하세요." :
-                                                    "질문을 입력하세요..."
+                                            !isConnected ? "연결되지 않음 - 재연결 버튼을 클릭하세요." :
+                                                "질문을 입력하세요..."
                                     }
                                     rows={2}
                                     className="flex-1 resize-none rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    disabled={isLoading || isConnecting || !isConnected || isMaxAttemptsReached}
+                                    disabled={isLoading || isConnecting || !isConnected}
                                     required
                                 />
                                 <Button
                                     type="submit"
-                                    disabled={isLoading || isConnecting || !prompt.trim() || !isConnected || isMaxAttemptsReached}
+                                    disabled={isLoading || isConnecting || !prompt.trim() || !isConnected}
                                     size="icon"
                                 >
                                     <Send className="h-4 w-4" />

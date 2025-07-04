@@ -107,26 +107,13 @@ export function getAllCookies(): Record<string, string> {
   return cookies;
 }
 
-// WebSocket URL 생성 함수
-export const getWebSocketUrl = (userId: string) => {
-  // ngrok URL 사용 (개발 환경)
-  if (process.env.NODE_ENV === 'development') {
-    const ngrokUrl = process.env.NEXT_PUBLIC_NGROK_URL || 'https://59d1-183-101-77-17.ngrok-free.app';
-    // ngrok HTTPS를 WSS로 변환
-    return ngrokUrl.replace('https://', 'wss://') + `/ws?userId=${userId}`;
-  }
 
-  // 프로덕션 환경
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const host = window.location.host;
-  return `${protocol}//${host}/ws?userId=${userId}`;
-};
 
 // API URL 생성 함수
 export const getApiUrl = () => {
   // ngrok URL 사용 (개발 환경)
   if (process.env.NODE_ENV === 'development') {
-    return process.env.NEXT_PUBLIC_NGROK_URL || 'https://59d1-183-101-77-17.ngrok-free.app';
+    return process.env.LOCAL_LLM_API_URL || 'http://localhost:8080';
   }
 
   // 프로덕션 환경

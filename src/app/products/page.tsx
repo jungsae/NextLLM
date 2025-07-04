@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Image from 'next/image';
 import {
     ShoppingBag,
     Tag,
@@ -22,7 +23,7 @@ import {
     Grid3X3,
     List
 } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { toast } from 'sonner';
 
@@ -94,7 +95,7 @@ export default function ProductsPage() {
     }, []);
 
     // 크롤링 세션 목록 가져오기
-    const fetchSessions = async () => {
+    const fetchSessions = useCallback(async () => {
         if (!userEmail) return;
 
         try {
@@ -116,13 +117,13 @@ export default function ProductsPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [userEmail]);
 
     useEffect(() => {
         if (userEmail) {
             fetchSessions();
         }
-    }, [userEmail]);
+    }, [userEmail, fetchSessions]);
 
     // 특정 세션의 상품들 가져오기
     const fetchSessionProducts = async (sessionId: string) => {
@@ -461,10 +462,11 @@ export default function ProductsPage() {
                                                 {viewMode === 'list' ? (
                                                     <>
                                                         <div className="relative w-32 h-32 flex-shrink-0">
-                                                            <img
+                                                            <Image
                                                                 src={product.image || 'https://via.placeholder.com/300x300?text=상품+이미지'}
                                                                 alt={product.name}
-                                                                className="w-full h-full object-cover"
+                                                                fill
+                                                                className="object-cover"
                                                             />
                                                             <div className="absolute top-2 right-2 bg-black/50 text-white px-1 py-0.5 rounded text-xs">
                                                                 <Tag className="h-2 w-2 inline mr-1" />
@@ -511,11 +513,12 @@ export default function ProductsPage() {
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <div className="relative">
-                                                            <img
+                                                        <div className="relative w-full h-32">
+                                                            <Image
                                                                 src={product.image || 'https://via.placeholder.com/300x300?text=상품+이미지'}
                                                                 alt={product.name}
-                                                                className="w-full h-32 object-cover"
+                                                                fill
+                                                                className="object-cover"
                                                             />
                                                             <div className="absolute top-2 right-2 bg-black/50 text-white px-2 py-1 rounded text-xs">
                                                                 <Tag className="h-3 w-3 inline mr-1" />
