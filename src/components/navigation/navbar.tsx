@@ -60,7 +60,7 @@ export function Navbar({ title, showBackButton = true, showHomeButton = true }: 
     };
 
     return (
-        <header className="border-b bg-card sticky top-0 z-50">
+        <header className="border-b bg-card top-0 left-0 right-0 z-50 w-full">
             <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8">
                 <div className="flex justify-between items-center py-3 sm:py-4">
                     {/* 왼쪽 영역 - 뒤로가기/홈 버튼 및 제목 */}

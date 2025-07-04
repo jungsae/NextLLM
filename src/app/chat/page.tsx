@@ -97,6 +97,12 @@ export default function ChatPage() {
         }
     }, [lastMessage, currentJob]);
 
+    useEffect(() => {
+        if (!authLoading && !isLoggedIn) {
+            router.push('/');
+        }
+    }, [isLoggedIn, authLoading, router]);
+
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         if (!prompt.trim() || isLoading || !isLoggedIn || isConnecting || !isConnected) return;
@@ -171,7 +177,6 @@ export default function ChatPage() {
         return <div>로그인 확인 중...</div>;
     }
     if (!isLoggedIn) {
-        router.push('/');
         return null;
     }
 
@@ -182,12 +187,12 @@ export default function ChatPage() {
             <Navbar />
 
             {/* SSE 연결 상태 표시 */}
-            <div className="max-w-4xl mx-auto px-2 sm:px-4 py-2">
+            <div className="max-w-4xl mx-auto px-2 sm:px-4 pt-[5px] sm:pt-0 pb-2">
                 <div className="flex items-center gap-2 text-xs sm:text-sm">
                     {isConnected ? (
                         <>
                             <Wifi className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
-                            <span className="text-green-600">실시간 연결됨 (SSE)</span>
+                            <span className="text-green-600">Live</span>
                         </>
                     ) : isConnecting ? (
                         <>
@@ -217,7 +222,7 @@ export default function ChatPage() {
             </div>
 
             {/* 채팅 영역 */}
-            <div className="max-w-4xl mx-auto px-2 sm:px-4 py-3 sm:py-6 h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)]">
+            <div className="max-w-4xl mx-auto px-2 sm:px-4 pt-[5px] sm:pt-0 pb-3 sm:pb-6 h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)]">
                 <Card className="h-full flex flex-col">
                     <CardHeader className="border-b flex-shrink-0 p-3 sm:p-6">
                         <CardTitle className="flex items-center gap-2 text-base sm:text-lg">

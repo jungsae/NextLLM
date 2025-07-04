@@ -250,7 +250,7 @@ export default function ProductsPage() {
         return (
             <div className="min-h-screen bg-background">
                 <Navbar />
-                <main className="max-w-7xl mx-auto px-4 py-8">
+                <main className="max-w-7xl mx-auto px-4 pt-[56px] sm:pt-0 pb-8">
                     <div className="flex items-center justify-center h-64">
                         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
                     </div>
@@ -263,7 +263,7 @@ export default function ProductsPage() {
         <div className="min-h-screen bg-background">
             <Navbar />
 
-            <main className="max-w-7xl mx-auto px-4 py-8">
+            <main className="max-w-7xl mx-auto px-4 pt-[56px] sm:pt-0 pb-8">
                 {/* 헤더 */}
                 <div className="mb-8">
                     <h2 className="text-2xl font-bold mb-2">크롤링 세션</h2>

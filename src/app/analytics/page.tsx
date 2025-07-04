@@ -37,7 +37,7 @@ export default function AnalyticsPage() {
         <div className="min-h-screen bg-background">
             <Navbar />
 
-            <main className="max-w-7xl mx-auto px-4 py-8">
+            <main className="max-w-7xl mx-auto px-4 pt-[56px] sm:pt-0 pb-8">
                 {/* 헤더 */}
                 <div className="mb-8">
                     <h2 className="text-2xl font-bold mb-2">통계 분석</h2>

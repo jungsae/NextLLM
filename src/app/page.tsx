@@ -108,13 +108,13 @@ export default function DashboardPage() {
       <Navbar />
 
       {/* 메인 콘텐츠 */}
-      <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 py-4 sm:py-8">
+      <main className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-8 pt-[10px] sm:pt-0 pb-4 sm:pb-8">
         {/* 환영 메시지 */}
-        {isLoggedIn && (
+        {isLoggedIn ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4 sm:mb-8"
+            className="mb-4 sm:mb-8 mt-0 sm:mt-6"
           >
             <Card className="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 border-blue-200 dark:border-blue-800">
               <CardContent className="p-4 sm:p-6">
@@ -129,6 +129,8 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </motion.div>
+        ) : (
+          <div className="mb-4 sm:mb-8 mt-0 sm:mt-6" />
         )}
 
         {/* 통계 카드 */}
