@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { useAuth } from "@/contexts/AuthContext"
 import { useRouter } from "next/navigation"
+import { Loader2 } from "lucide-react"
 
 export function AuthForm() {
     const [isGoogleLoading, setIsGoogleLoading] = useState(false)
@@ -93,18 +94,24 @@ export function AuthForm() {
             <Button
                 onClick={handleGoogleLogin}
                 disabled={isGoogleLoading || isGithubLoading}
-                className="w-full flex items-center justify-center gap-2"
+                className={`w-full flex items-center justify-center gap-2 transition-opacity ${isGoogleLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 variant="outline"
             >
-                {isGoogleLoading ? '로그인 중...' : 'Google로 로그인'}
+                {isGoogleLoading && (
+                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                )}
+                Google로 로그인
             </Button>
             <Button
                 onClick={handleGithubLogin}
                 disabled={isGoogleLoading || isGithubLoading}
-                className="w-full flex items-center justify-center gap-2"
+                className={`w-full flex items-center justify-center gap-2 transition-opacity ${isGithubLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 variant="outline"
             >
-                {isGithubLoading ? '로그인 중...' : 'GitHub로 로그인'}
+                {isGithubLoading && (
+                    <Loader2 className="animate-spin mr-2 h-4 w-4" />
+                )}
+                GitHub로 로그인
             </Button>
         </div>
     )

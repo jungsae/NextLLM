@@ -95,7 +95,7 @@ export function Navbar({ title, showBackButton = true, showHomeButton = true }: 
                                 <h1 className="text-lg sm:text-xl font-bold truncate">{getPageTitle()}</h1>
                                 {isLoggedIn && user && (
                                     <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                                        {user.email}님 환영합니다
+                                        {user.email}
                                     </p>
                                 )}
                             </div>

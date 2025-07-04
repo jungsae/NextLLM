@@ -16,11 +16,13 @@ import {
   ArrowRight,
   Clock,
   Activity,
-  ShoppingBag
+  ShoppingBag,
+  Info
 } from "lucide-react";
 import { motion } from 'framer-motion';
 import { Navbar } from "@/components/navigation/navbar";
 import { useAuth } from "@/contexts/AuthContext";
+import ToastProgressBar from '@/components/ui/ToastProgressBar';
 
 interface DashboardStats {
   totalChats: number;
@@ -123,7 +125,23 @@ export default function DashboardPage() {
                     <Sparkles className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-base sm:text-lg font-semibold">환영합니다! 🎉</h2>
+                    {(() => {
+                      const now = new Date();
+                      const hour = now.getHours();
+                      let greeting = '아침';
+                      if (hour >= 5 && hour < 11) {
+                        greeting = '아침';
+                      } else if (hour >= 11 && hour < 17) {
+                        greeting = '점심';
+                      } else {
+                        greeting = '저녁';
+                      }
+                      return (
+                        <h2 className="text-base sm:text-lg font-semibold">
+                          좋은 {greeting} 보내세요!
+                        </h2>
+                      );
+                    })()}
                   </div>
                 </div>
               </CardContent>
@@ -176,8 +194,32 @@ export default function DashboardPage() {
                   if (isLoggedIn) {
                     router.push(card.href);
                   } else {
-                    toast.error('로그인이 필요한 기능입니다. 먼저 로그인해주세요.');
-                    router.push('/auth');
+                    toast.custom(() => (
+                      <div
+                        className="relative flex items-start gap-3 px-4 sm:px-6 pt-3 sm:pt-4 pb-5 sm:pb-6 min-w-[220px] sm:min-w-[260px] max-w-[90vw] sm:max-w-xs border"
+                        style={{
+                          background: 'rgba(255,255,255,0.85)',
+                          backdropFilter: 'blur(8px)',
+                          color: 'var(--card-foreground)',
+                          borderRadius: 'var(--radius)',
+                          boxShadow: '0 6px 32px 0 rgba(0,0,0,0.13), 0 2px 8px 0 rgba(0,0,0,0.07)',
+                          fontFamily: 'Inter, var(--font-sans), sans-serif',
+                          lineHeight: 1.6,
+                          border: '1.5px solid var(--primary)',
+                          margin: 2,
+                        }}
+                      >
+                        <Info className="mt-1 h-5 w-5 text-primary shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-sm sm:text-base truncate">로그인이 필요합니다</div>
+                          <div className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">먼저 로그인 후 이용해 주세요.</div>
+                        </div>
+                        <ToastProgressBar duration={1000} />
+                      </div>
+                    ));
+                    setTimeout(() => {
+                      router.push('/auth');
+                    }, 1000); // 1초 후 이동
                   }
                 }}
               >
