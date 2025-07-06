@@ -103,27 +103,26 @@ export function Navbar({ title, showBackButton = true, showHomeButton = true }: 
                     </div>
 
                     {/* 오른쪽 영역 - 테마 토글 및 로그인/로그아웃 */}
-                    <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
                         <ThemeToggle />
 
                         {isLoggedIn ? (
                             <Button
                                 onClick={handleLogout}
-                                variant="outline"
+                                variant="destructive"
                                 size="sm"
-                                className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3"
+                                className="flex items-center gap-2 text-xs sm:text-sm px-3 sm:px-4 h-8 sm:h-9 font-medium shadow-sm hover:shadow-md transition-all duration-200"
                             >
                                 <LogOut className="h-3 w-3 sm:h-4 sm:w-4" />
-                                <span>로그아웃</span>
+                                <span className="hidden sm:inline">로그아웃</span>
                             </Button>
                         ) : (
                             <Button
                                 onClick={() => router.push('/auth')}
-                                variant="outline"
-                                size="sm"
-                                className="text-xs sm:text-sm px-2 sm:px-3"
+                                className="flex items-center gap-2 text-xs sm:text-sm px-3 sm:px-4 h-8 sm:h-9 font-medium bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
                             >
-                                로그인
+                                <span className="hidden sm:inline">로그인</span>
+                                <span className="sm:hidden">로그인</span>
                             </Button>
                         )}
                     </div>

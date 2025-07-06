@@ -23,6 +23,7 @@ import { motion } from 'framer-motion';
 import { Navbar } from "@/components/navigation/navbar";
 import { useAuth } from "@/contexts/AuthContext";
 import ToastProgressBar from '@/components/ui/ToastProgressBar';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 
 interface DashboardStats {
   totalChats: number;
@@ -32,7 +33,7 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, loading } = useAuth();
   const [stats] = useState<DashboardStats>({
     totalChats: 0,
     totalTokens: 0,
@@ -105,7 +106,16 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Toaster richColors closeButton />
+      <Toaster
+        richColors
+        closeButton
+        duration={3000}
+        position="top-center"
+        expand={true}
+        swipeDirections={["right"]}
+      />
+
+      <LoadingOverlay isVisible={loading} type="auth" />
 
       <Navbar />
 

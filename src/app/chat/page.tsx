@@ -13,6 +13,7 @@ import { SessionList } from '@/components/chat/SessionList';
 import { MessageList } from '@/components/chat/MessageList';
 import { MessageInput } from '@/components/chat/MessageInput';
 import { startNewChat, sendMessage, fetchSession } from '@/lib/chat-api';
+import { LoadingOverlay } from '@/components/LoadingOverlay';
 
 export default function ChatPage() {
     const { isLoggedIn, user, loading: authLoading } = useAuth();
@@ -204,7 +205,16 @@ export default function ChatPage() {
 
     return (
         <div className="min-h-screen bg-background">
-            <Toaster richColors closeButton />
+            <Toaster
+                richColors
+                closeButton
+                duration={3000}
+                position="top-center"
+                expand={true}
+                swipeDirections={["right"]}
+            />
+
+            <LoadingOverlay isVisible={authLoading} type="auth" />
 
             <Navbar />
 

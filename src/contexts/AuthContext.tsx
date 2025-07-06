@@ -64,6 +64,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 로그아웃 함수
     const logout = useCallback(async () => {
         try {
+            // 로딩 상태 설정
+            setAuth(prev => ({ ...prev, loading: true }));
+
             // 로그아웃 API 호출
             const response = await fetch('/api/auth/logout', {
                 method: 'POST',
