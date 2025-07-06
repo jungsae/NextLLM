@@ -14,7 +14,7 @@ export const useSSE = (userId: string) => {
 
     useEffect(() => {
         if (!userId || userId.trim() === '') {
-            console.log('SSE 연결 중단: userId 없음');
+            // console.log('SSE 연결 중단: userId 없음'); // 불필요한 로그 제거
             setIsConnected(false);
             setIsConnecting(false);
             return;

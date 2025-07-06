@@ -4,7 +4,9 @@ import {
     ChatSendResponse
 } from '@/types/job';
 
-const API_BASE_URL = process.env.LOCAL_LLM_API_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_LOCAL_LLM_API_URL;
+
+console.log('API_BASE_URL', API_BASE_URL);
 
 /**
  * 새 대화 시작
@@ -14,6 +16,7 @@ export const startNewChat = async (content: string, userId: string): Promise<Cha
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json'
         },
         body: JSON.stringify({ content, userId }),
     });
@@ -34,6 +37,7 @@ export const sendMessage = async (content: string, userId: string, sessionId: st
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json'
         },
         body: JSON.stringify({ content, userId, sessionId }),
     });
@@ -50,21 +54,56 @@ export const sendMessage = async (content: string, userId: string, sessionId: st
  * 사용자의 대화 세션 목록 조회
  */
 export const fetchUserSessions = async (userId: string, limit: number = 10): Promise<ChatSession[]> => {
-    const response = await fetch(`${API_BASE_URL}/api/chat/user/${userId}?limit=${limit}`);
+    const url = `${API_BASE_URL}/api/chat/user/${userId}?limit=${limit}`;
+    console.log('Fetching sessions from:', url);
 
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `API request failed with status ${response.status}`);
+    try {
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+        });
+
+        console.log('Response status:', response.status);
+        console.log('Response content-type:', response.headers.get('content-type'));
+        console.log('Response body:', response.body);
+
+        if (!response.ok) {
+            const responseText = await response.text();
+            console.error('Session fetch error:', response.status, responseText.substring(0, 200));
+            throw new Error(`API request failed with status ${response.status}`);
+        }
+
+        const responseText = await response.text();
+
+        try {
+            const data = JSON.parse(responseText);
+            console.log('Sessions fetched successfully:', data);
+            return data;
+        } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.error('Response was not JSON:', responseText.substring(0, 200));
+            throw new Error('서버에서 올바른 JSON 응답을 받지 못했습니다.');
+        }
+    } catch (error) {
+        console.error('Network error while fetching sessions:', error);
+        throw error;
     }
-
-    return response.json();
 };
 
 /**
  * 특정 대화 세션 조회 (전체 메시지)
  */
 export const fetchSession = async (sessionId: string, userId: string): Promise<ChatSession> => {
-    const response = await fetch(`${API_BASE_URL}/api/chat/sessions/${sessionId}?userId=${userId}`);
+    const response = await fetch(`${API_BASE_URL}/api/chat/sessions/${sessionId}?userId=${userId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+    });
 
     if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -82,6 +121,7 @@ export const createSession = async (userId: string, title: string): Promise<Chat
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json'
         },
         body: JSON.stringify({ userId, title }),
     });
@@ -102,6 +142,7 @@ export const deleteSession = async (sessionId: string, userId: string): Promise<
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json'
         },
         body: JSON.stringify({ userId }),
     });

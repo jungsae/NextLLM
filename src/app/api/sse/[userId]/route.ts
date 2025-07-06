@@ -31,7 +31,7 @@ export async function GET(
         }
 
         // 백엔드 서버로 SSE 연결 프록시
-        const backendUrl = process.env.LOCAL_LLM_API_URL;
+        const backendUrl = process.env.NEXT_PUBLIC_LOCAL_LLM_API_URL;
         const backendSseUrl = `${backendUrl}/api/sse/${userId}`;
 
         console.log('SSE 프록시 연결 시도:', backendSseUrl);

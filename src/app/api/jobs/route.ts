@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
         }
 
         // 백엔드 LLM 서버에 작업 생성 요청
-        const llmApiUrl = process.env.LOCAL_LLM_API_URL;
+        const llmApiUrl = process.env.NEXT_PUBLIC_LOCAL_LLM_API_URL;
         if (!llmApiUrl) {
             throw new ValidationError('LLM API URL이 설정되지 않았습니다.');
         }

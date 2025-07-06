@@ -113,7 +113,7 @@ export function getAllCookies(): Record<string, string> {
 export const getApiUrl = () => {
   // ngrok URL 사용 (개발 환경)
   if (process.env.NODE_ENV === 'development') {
-    return process.env.LOCAL_LLM_API_URL;
+    return process.env.NEXT_PUBLIC_LOCAL_LLM_API_URL;
   }
 
   // 프로덕션 환경
