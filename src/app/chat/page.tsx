@@ -16,7 +16,7 @@ import { startNewChat, sendMessage, fetchSession } from '@/lib/chat-api';
 import { LoadingOverlay } from '@/components/LoadingOverlay';
 
 export default function ChatPage() {
-    const { isLoggedIn, user, loading: authLoading } = useAuth();
+    const { isLoggedIn, user, loading: authLoading, loadingType } = useAuth();
     const router = useRouter();
 
     // 상태 관리
@@ -214,7 +214,7 @@ export default function ChatPage() {
                 swipeDirections={["right"]}
             />
 
-            <LoadingOverlay isVisible={authLoading} type="auth" />
+            <LoadingOverlay isVisible={authLoading} type={loadingType || 'auth'} />
 
             <Navbar />
 

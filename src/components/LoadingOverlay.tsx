@@ -5,25 +5,25 @@ import { Loader2, Sparkles } from 'lucide-react';
 interface LoadingOverlayProps {
     message?: string;
     isVisible?: boolean;
-    type?: 'default' | 'auth' | 'chat';
+    type?: 'auth' | 'auth-login' | 'auth-logout' | 'chat';
 }
 
 export function LoadingOverlay({
     message,
     isVisible = true,
-    type = 'default'
+    type = 'auth'
 }: LoadingOverlayProps) {
     if (!isVisible) return null;
 
     const getMessage = () => {
         if (message) return message;
         switch (type) {
-            case 'auth':
+            case 'auth-login':
                 return '로그인 처리 중...';
+            case 'auth-logout':
+                return '로그아웃 처리 중...';
             case 'chat':
                 return 'AI가 답변을 생성하고 있습니다...';
-            default:
-                return '로딩 중...';
         }
     };
 

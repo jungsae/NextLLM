@@ -6,6 +6,7 @@ interface AuthState {
     isLoggedIn: boolean;
     user: any;
     loading: boolean;
+    loadingType: 'auth' | 'auth-login' | 'auth-logout' | null;
     login: (user: any) => void;
     logout: () => void;
     refreshAuth: () => Promise<void>;
@@ -14,15 +15,19 @@ interface AuthState {
 const AuthContext = createContext<AuthState | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-    const [auth, setAuth] = useState<{ isLoggedIn: boolean; user: any; loading: boolean }>({
+    const [auth, setAuth] = useState<{ isLoggedIn: boolean; user: any; loading: boolean; loadingType: 'auth' | 'auth-login' | 'auth-logout' | null }>({
         isLoggedIn: false,
         user: null,
-        loading: true,
+        loading: false,
+        loadingType: null,
     });
 
     // 인증 상태 새로고침 함수
     const refreshAuth = useCallback(async () => {
         try {
+            // 로딩 상태 설정
+            setAuth(prev => ({ ...prev, loading: true, loadingType: 'auth' }));
+
             const response = await fetch('/api/auth/check', {
                 method: 'GET',
                 credentials: 'include', // 쿠키 포함
@@ -44,28 +49,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setAuth({
                     isLoggedIn: data.isLoggedIn,
                     user: data.user,
-                    loading: false
+                    loading: false,
+                    loadingType: null
                 });
             } else {
                 // 인증 실패 시 로그아웃 상태로 설정
-                setAuth({ isLoggedIn: false, user: null, loading: false });
+                setAuth({ isLoggedIn: false, user: null, loading: false, loadingType: null });
             }
         } catch (error) {
             console.error('인증 상태 확인 실패:', error);
-            setAuth({ isLoggedIn: false, user: null, loading: false });
+            setAuth({ isLoggedIn: false, user: null, loading: false, loadingType: null });
         }
     }, []);
 
     // 로그인 함수
     const login = useCallback((user: any) => {
-        setAuth({ isLoggedIn: true, user, loading: false });
+        setAuth({ isLoggedIn: true, user, loading: false, loadingType: null });
     }, []);
 
     // 로그아웃 함수
     const logout = useCallback(async () => {
         try {
             // 로딩 상태 설정
-            setAuth(prev => ({ ...prev, loading: true }));
+            setAuth(prev => ({ ...prev, loading: true, loadingType: 'auth-logout' }));
 
             // 로그아웃 API 호출
             const response = await fetch('/api/auth/logout', {
@@ -80,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error('로그아웃 중 오류 발생:', error);
         } finally {
             // 상태 즉시 초기화
-            setAuth({ isLoggedIn: false, user: null, loading: false });
+            setAuth({ isLoggedIn: false, user: null, loading: false, loadingType: null });
         }
     }, []);
 

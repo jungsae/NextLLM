@@ -33,7 +33,7 @@ interface DashboardStats {
 }
 
 export default function DashboardPage() {
-  const { isLoggedIn, loading } = useAuth();
+  const { isLoggedIn, loading, loadingType } = useAuth();
   const [stats] = useState<DashboardStats>({
     totalChats: 0,
     totalTokens: 0,
@@ -115,7 +115,7 @@ export default function DashboardPage() {
         swipeDirections={["right"]}
       />
 
-      <LoadingOverlay isVisible={loading} type="auth" />
+      <LoadingOverlay isVisible={loading} type={loadingType || 'auth'} />
 
       <Navbar />
 

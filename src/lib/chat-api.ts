@@ -4,7 +4,7 @@ import {
     ChatSendResponse
 } from '@/types/job';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+const API_BASE_URL = process.env.LOCAL_LLM_API_URL;
 
 /**
  * 새 대화 시작
