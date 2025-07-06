@@ -1,46 +1,33 @@
 'use client';
 
-import { useState, FormEvent, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from "next/navigation";
 import { toast, Toaster } from "sonner";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Send, Bot, User, Wifi, WifiOff } from "lucide-react";
+import { Wifi, WifiOff, Bot } from "lucide-react";
 import { Navbar } from '@/components/navigation/navbar';
 import { useSSE } from '@/hooks/useSSE';
-import { Job } from '@/types/job';
+import { Job, ChatSession, ChatMessage } from '@/types/job';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface Message {
-    id: string;
-    role: 'user' | 'assistant';
-    content: string;
-    timestamp: Date;
-    jobId?: number;
-}
+import { SessionList } from '@/components/chat/SessionList';
+import { MessageList } from '@/components/chat/MessageList';
+import { MessageInput } from '@/components/chat/MessageInput';
+import { startNewChat, sendMessage, fetchSession } from '@/lib/chat-api';
 
 export default function ChatPage() {
     const { isLoggedIn, user, loading: authLoading } = useAuth();
     const router = useRouter();
-    const [messages, setMessages] = useState<Message[]>([]);
-    const [prompt, setPrompt] = useState('');
+
+    // 상태 관리
+    const [currentSession, setCurrentSession] = useState<ChatSession | null>(null);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [currentJob, setCurrentJob] = useState<Job | null>(null);
     const lastProcessedMessageRef = useRef<string>('');
-    const messagesEndRef = useRef<HTMLDivElement>(null);
 
+    // SSE 연결
     const { isConnected, isConnecting, lastMessage, error: sseError, manualReconnect } = useSSE(user?.id || '');
-
-    // 자동 스크롤 함수
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    };
-
-    // 메시지가 추가될 때마다 자동 스크롤
-    useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
 
     // SSE 메시지 처리
     useEffect(() => {
@@ -59,18 +46,19 @@ export default function ChatPage() {
             switch (lastMessage.type) {
                 case 'JOB_COMPLETED':
                     console.log('작업 완료!', lastMessage.data.result);
-                    const assistantMessage: Message = {
-                        id: Date.now().toString(),
-                        role: 'assistant',
+
+                    // 새로운 assistant 메시지 추가
+                    const assistantMessage: ChatMessage = {
+                        id: Date.now(),
+                        sessionId: currentSession?.id || '',
                         content: lastMessage.data.result.content || lastMessage.data.result,
-                        timestamp: new Date(),
-                        jobId: currentJob.id
+                        createdAt: new Date().toISOString()
                     };
+
                     setMessages(prev => [...prev, assistantMessage]);
                     setCurrentJob(null);
                     setIsLoading(false);
                     setError(null);
-                    // 메시지 키 초기화
                     lastProcessedMessageRef.current = '';
                     break;
 
@@ -79,7 +67,6 @@ export default function ChatPage() {
                     setError(lastMessage.data.error || '작업 처리 중 오류가 발생했습니다.');
                     setCurrentJob(null);
                     setIsLoading(false);
-                    // 메시지 키 초기화
                     lastProcessedMessageRef.current = '';
                     break;
 
@@ -88,89 +75,124 @@ export default function ChatPage() {
                     if (currentJob && currentJob.status !== lastMessage.data.status) {
                         console.log('작업 상태 변경:', lastMessage.data.status);
                         setCurrentJob(prev => prev ? { ...prev, status: lastMessage.data.status } : null);
-                    } else {
-                        // 상태가 동일한 경우 디버그 레벨로만 로그
-                        console.debug('동일한 상태 업데이트 무시:', lastMessage.data.status);
                     }
                     break;
             }
         }
-    }, [lastMessage, currentJob]);
+    }, [lastMessage, currentJob, currentSession]);
 
+    // 인증 확인
     useEffect(() => {
         if (!authLoading && !isLoggedIn) {
             router.push('/');
         }
     }, [isLoggedIn, authLoading, router]);
 
-    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (!prompt.trim() || isLoading || !isLoggedIn || isConnecting || !isConnected) return;
-
-        const userMessage: Message = {
-            id: Date.now().toString(),
-            role: 'user',
-            content: prompt,
-            timestamp: new Date()
+    // 새 대화 시작
+    const handleStartNewChat = () => {
+        // 임시 세션 생성 (실제로는 첫 메시지를 보낼 때 생성됨)
+        const tempSession: ChatSession = {
+            id: 'temp-' + Date.now(),
+            userId: user?.id || '',
+            title: '새 대화',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            messages: []
         };
+        setCurrentSession(tempSession);
+        setMessages([]);
+        setError(null);
+        setCurrentJob(null);
+    };
 
-        setMessages(prev => [...prev, userMessage]);
-        setPrompt('');
+    // 세션 선택
+    const handleSessionSelect = async (session: ChatSession) => {
+        if (!user?.id) {
+            toast.error('사용자 정보를 찾을 수 없습니다.');
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            // 전체 세션 정보와 메시지를 가져오기
+            const fullSession = await fetchSession(session.id, user.id);
+            setCurrentSession(fullSession);
+            setMessages(fullSession.messages);
+            setError(null);
+            setCurrentJob(null);
+        } catch (error: any) {
+            console.error('세션 로드 실패:', error);
+            toast.error('세션을 불러오는데 실패했습니다.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // 세션 삭제
+    const handleSessionDelete = (sessionId: string) => {
+        if (currentSession?.id === sessionId) {
+            setCurrentSession(null);
+            setMessages([]);
+        }
+        // 임시 세션인 경우 목록으로 돌아가기
+        if (sessionId.startsWith('temp-')) {
+            setCurrentSession(null);
+            setMessages([]);
+        }
+    };
+
+    // 메시지 전송
+    const handleSendMessage = async (content: string) => {
+        if (!user?.id) {
+            toast.error('사용자 정보를 찾을 수 없습니다.');
+            return;
+        }
+
         setIsLoading(true);
         setError(null);
 
         try {
-            // Next.js API 라우트를 통해 Job 생성 요청 (인증 포함)
-            const res = await fetch('/api/jobs', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    messages: [{ role: 'user', content: userMessage.content }],
-                    priority: 3
-                }),
+            let response;
+
+            if (currentSession && !currentSession.id.startsWith('temp-')) {
+                // 기존 대화에 메시지 전송
+                response = await sendMessage(content, user.id, currentSession.id);
+            } else {
+                // 새 대화 시작
+                response = await startNewChat(content, user.id);
+
+                // 새 세션 정보 설정
+                const newSession: ChatSession = {
+                    id: response.sessionId,
+                    userId: user.id,
+                    title: content.length > 30 ? content.substring(0, 30) + '...' : content,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    messages: [response.userMessage]
+                };
+                setCurrentSession(newSession);
+            }
+
+            // 사용자 메시지 추가
+            setMessages(prev => [...prev, response.userMessage]);
+
+            // 현재 작업 설정
+            setCurrentJob({
+                id: response.jobId,
+                userId: user.id,
+                status: response.status as any,
+                priority: 3,
+                inputData: { prompt: content },
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
             });
 
-            const data = await res.json();
-            console.log("작업 생성 응답:", data);
-
-            if (!res.ok) {
-                throw new Error(data.error || `API request failed with status ${res.status}`);
-            }
-
-            if (data.success && data.data) {
-                setCurrentJob({
-                    id: data.data.id,
-                    userId: data.data.userId,
-                    status: data.data.status,
-                    priority: 3,
-                    inputData: { prompt: userMessage.content },
-                    createdAt: new Date().toISOString(),
-                    updatedAt: new Date().toISOString()
-                });
-
-                // 사용자 메시지에 jobId 추가
-                setMessages(prev => prev.map(msg =>
-                    msg.id === userMessage.id ? { ...msg, jobId: data.data.id } : msg
-                ));
-            } else {
-                throw new Error('작업 생성에 실패했습니다.');
-            }
-
-        } catch (err: any) {
-            console.error("작업 생성 실패:", err);
-            setError(err.message || '작업 생성 중 오류가 발생했습니다.');
+        } catch (error: any) {
+            console.error("메시지 전송 실패:", error);
+            setError(error.message || '메시지 전송 중 오류가 발생했습니다.');
             setIsLoading(false);
-            toast.error('작업 생성 중 오류가 발생했습니다.');
+            toast.error('메시지 전송 중 오류가 발생했습니다.');
         }
-    };
-
-    const formatTime = (date: Date) => {
-        return date.toLocaleTimeString('ko-KR', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
     };
 
     if (authLoading) {
@@ -187,7 +209,7 @@ export default function ChatPage() {
             <Navbar />
 
             {/* SSE 연결 상태 표시 */}
-            <div className="max-w-4xl mx-auto px-2 sm:px-4 pt-[5px] sm:pt-0 pb-2">
+            <div className="max-w-7xl mx-auto px-2 sm:px-4 pt-[5px] sm:pt-0 pb-2">
                 <div className="flex items-center gap-2 text-xs sm:text-sm">
                     {isConnected ? (
                         <>
@@ -203,14 +225,12 @@ export default function ChatPage() {
                         <div className="flex items-center gap-2">
                             <WifiOff className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
                             <span className="text-red-600">연결 실패</span>
-                            <Button
+                            <button
                                 onClick={manualReconnect}
-                                size="sm"
-                                variant="outline"
-                                className="h-5 sm:h-6 px-1 sm:px-2 text-xs"
+                                className="text-xs px-2 py-1 border border-red-300 rounded hover:bg-red-50"
                             >
                                 재연결
-                            </Button>
+                            </button>
                         </div>
                     ) : (
                         <>
@@ -222,118 +242,68 @@ export default function ChatPage() {
             </div>
 
             {/* 채팅 영역 */}
-            <div className="max-w-4xl mx-auto px-2 sm:px-4 pt-[5px] sm:pt-0 pb-3 sm:pb-6 h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)]">
-                <Card className="h-full flex flex-col">
-                    <CardHeader className="border-b flex-shrink-0 p-3 sm:p-6">
-                        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                            <Bot className="h-4 w-4 sm:h-5 sm:w-5" />
-                            대화 시작
-                        </CardTitle>
-                    </CardHeader>
-
-                    <CardContent className="flex-1 flex flex-col p-0 min-h-0">
-                        {/* 메시지 영역 */}
-                        <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-3 sm:space-y-4 min-h-0">
-                            {messages.length === 0 ? (
-                                <div className="text-center text-muted-foreground py-6 sm:py-8">
-                                    <Bot className="h-8 w-8 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 opacity-50" />
-                                    <p className="text-sm sm:text-base">첫 번째 질문을 해보세요!</p>
-                                </div>
-                            ) : (
-                                messages.map((message) => (
-                                    <div
-                                        key={message.id}
-                                        className={`flex gap-2 sm:gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'
-                                            }`}
+            <div className="max-w-7xl mx-auto px-2 sm:px-4 pt-[5px] sm:pt-0 pb-3 sm:pb-6 h-[calc(100vh-180px)] sm:h-[calc(100vh-200px)]">
+                {currentSession ? (
+                    // 대화창이 선택된 경우
+                    <div className="h-full">
+                        <Card className="h-full flex flex-col">
+                            <CardHeader className="border-b flex-shrink-0 p-3 sm:p-6">
+                                <div className="flex items-center justify-between">
+                                    <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                                        <Bot className="h-4 w-4 sm:h-5 sm:w-5" />
+                                        {currentSession.title}
+                                    </CardTitle>
+                                    <button
+                                        onClick={() => {
+                                            setCurrentSession(null);
+                                            setMessages([]);
+                                            setError(null);
+                                            setCurrentJob(null);
+                                        }}
+                                        className="text-sm text-muted-foreground hover:text-foreground transition-colors"
                                     >
-                                        {message.role === 'assistant' && (
-                                            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                                                <Bot className="h-3 w-3 sm:h-4 sm:w-4 text-primary-foreground" />
-                                            </div>
-                                        )}
-
-                                        <div
-                                            className={`max-w-[75%] sm:max-w-[70%] rounded-lg px-3 py-2 sm:px-4 sm:py-2 break-words ${message.role === 'user'
-                                                ? 'bg-primary text-primary-foreground'
-                                                : 'bg-muted'
-                                                }`}
-                                        >
-                                            <p className="whitespace-pre-wrap break-words text-sm sm:text-base">{message.content}</p>
-                                            <p className={`text-xs mt-1 ${message.role === 'user'
-                                                ? 'text-primary-foreground/70'
-                                                : 'text-muted-foreground'
-                                                }`}>
-                                                {formatTime(message.timestamp)}
-                                            </p>
-                                        </div>
-
-                                        {message.role === 'user' && (
-                                            <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                                                <User className="h-3 w-3 sm:h-4 sm:w-4 text-primary-foreground" />
-                                            </div>
-                                        )}
-                                    </div>
-                                ))
-                            )}
-
-                            {isLoading && (
-                                <div className="flex gap-2 sm:gap-3 justify-start">
-                                    <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                                        <Bot className="h-3 w-3 sm:h-4 sm:w-4 text-primary-foreground" />
-                                    </div>
-                                    <div className="bg-muted rounded-lg px-3 py-2 sm:px-4 sm:py-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="flex gap-1">
-                                                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-muted-foreground rounded-full animate-bounce"></div>
-                                                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                                            </div>
-                                            <span className="text-xs sm:text-sm text-muted-foreground">
-                                                {currentJob?.status === 'PROCESSING' ? 'AI가 답변을 생성하고 있습니다...' : '작업이 대기열에 등록되었습니다...'}
-                                            </span>
-                                        </div>
-                                    </div>
+                                        ← 목록으로
+                                    </button>
                                 </div>
-                            )}
+                            </CardHeader>
 
-                            {/* 자동 스크롤을 위한 타겟 */}
-                            <div ref={messagesEndRef} />
-                        </div>
-
-                        {/* 입력 폼 */}
-                        <div className="border-t p-2 sm:p-4 flex-shrink-0">
-                            <form onSubmit={handleSubmit} className="flex gap-2">
-                                <textarea
-                                    value={prompt}
-                                    onChange={(e) => setPrompt(e.target.value)}
-                                    placeholder={
-                                        isConnecting ? "연결 중... 잠시만 기다려주세요." :
-                                            !isConnected ? "연결되지 않음 - 재연결 버튼을 클릭하세요." :
-                                                "질문을 입력하세요..."
-                                    }
-                                    rows={2}
-                                    className="flex-1 resize-none rounded-md border border-input bg-background px-2 py-2 sm:px-3 sm:py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                    disabled={isLoading || isConnecting || !isConnected}
-                                    required
+                            <CardContent className="flex-1 flex flex-col p-0 min-h-0">
+                                {/* 메시지 목록 */}
+                                <MessageList
+                                    messages={messages}
+                                    isLoading={isLoading}
+                                    currentJobStatus={currentJob?.status}
                                 />
-                                <Button
-                                    type="submit"
-                                    disabled={isLoading || isConnecting || !prompt.trim() || !isConnected}
-                                    size="icon"
-                                    className="flex-shrink-0"
-                                >
-                                    <Send className="h-4 w-4" />
-                                </Button>
-                            </form>
-                        </div>
-                    </CardContent>
-                </Card>
 
-                {error && (
-                    <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-                        <p className="text-destructive text-sm">
-                            <strong>오류 발생:</strong> {error}
-                        </p>
+                                {/* 메시지 입력 */}
+                                <MessageInput
+                                    onSendMessage={handleSendMessage}
+                                    isLoading={isLoading}
+                                    isConnected={isConnected}
+                                    isConnecting={isConnecting}
+                                    disabled={!isLoggedIn}
+                                />
+                            </CardContent>
+                        </Card>
+
+                        {error && (
+                            <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+                                <p className="text-destructive text-sm">
+                                    <strong>오류 발생:</strong> {error}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    // 세션 목록만 보이는 경우
+                    <div className="h-full">
+                        <SessionList
+                            userId={user?.id || ''}
+                            currentSessionId={undefined}
+                            onSessionSelect={handleSessionSelect}
+                            onNewChat={handleStartNewChat}
+                            onSessionDelete={handleSessionDelete}
+                        />
                     </div>
                 )}
             </div>

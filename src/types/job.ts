@@ -33,7 +33,6 @@ export interface WebSocketMessage {
 
 export interface JobCreateRequest {
     messages: Array<{
-        role: 'user' | 'assistant' | 'system';
         content: string;
     }>;
     priority: number;
@@ -44,4 +43,46 @@ export interface JobResponse {
     id: number;
     status: string;
     message: string;
+}
+
+// 새로운 Chat API 타입들
+export interface ChatMessage {
+    id: number;
+    sessionId: string;
+    content: string;
+    createdAt: string;
+}
+
+export interface ChatSession {
+    id: string;
+    userId: string;
+    title: string;
+    createdAt: string;
+    updatedAt: string;
+    messages: ChatMessage[];
+}
+
+export interface ChatStartRequest {
+    content: string;
+    userId: string;
+}
+
+export interface ChatSendRequest {
+    content: string;
+    userId: string;
+    sessionId: string;
+}
+
+export interface ChatStartResponse {
+    sessionId: string;
+    jobId: number;
+    userMessage: ChatMessage;
+    status: string;
+}
+
+export interface ChatSendResponse {
+    sessionId: string;
+    jobId: number;
+    userMessage: ChatMessage;
+    status: string;
 } 
