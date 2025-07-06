@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
             throw new ValidationError('메시지가 필요합니다.');
         }
 
-        const userMessage = messages.find(msg => msg.role === 'user');
+        const userMessage = messages[0];
         if (!userMessage || !userMessage.content.trim()) {
             throw new ValidationError('사용자 메시지가 필요합니다.');
         }
