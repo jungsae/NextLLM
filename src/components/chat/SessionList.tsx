@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trash2, MessageSquare, Plus } from 'lucide-react';
@@ -28,7 +28,7 @@ export function SessionList({
     const [error, setError] = useState<string | null>(null);
 
     // 세션 목록 로드
-    const loadSessions = async () => {
+    const loadSessions = useCallback(async () => {
         try {
             setLoading(true);
             setError(null);
@@ -41,7 +41,7 @@ export function SessionList({
         } finally {
             setLoading(false);
         }
-    };
+    }, [userId]);
 
     // 세션 삭제
     const handleDeleteSession = async (sessionId: string, event: React.MouseEvent) => {
@@ -94,7 +94,7 @@ export function SessionList({
 
     useEffect(() => {
         loadSessions();
-    }, [userId]);
+    }, [loadSessions]);
 
     if (loading) {
         return (

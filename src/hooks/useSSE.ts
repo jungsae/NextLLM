@@ -14,7 +14,6 @@ export const useSSE = (userId: string) => {
 
     useEffect(() => {
         if (!userId || userId.trim() === '') {
-            // console.log('SSE 연결 중단: userId 없음'); // 불필요한 로그 제거
             setIsConnected(false);
             setIsConnecting(false);
             return;
@@ -36,11 +35,9 @@ export const useSSE = (userId: string) => {
             const host = window.location.host;
             const sseUrl = `${protocol}//${host}/api/sse/${userId}`;
 
-            console.log('SSE 연결 시도 (Next.js 프록시):', sseUrl);
             eventSource.current = new EventSource(sseUrl);
 
             eventSource.current.onopen = () => {
-                console.log('SSE 연결 성공:', sseUrl);
                 setIsConnected(true);
                 setIsConnecting(false);
                 setError(null);
@@ -52,19 +49,15 @@ export const useSSE = (userId: string) => {
 
                     // heartbeat는 무시
                     if (message.type === 'heartbeat') {
-                        console.log('SSE heartbeat 수신');
                         return;
                     }
 
                     setLastMessage(message);
-                    console.log('SSE 메시지 수신:', message);
-                } catch (error) {
-                    console.error('SSE 메시지 파싱 실패:', error);
+                } catch {
                 }
             };
 
             eventSource.current.onerror = (error) => {
-                console.error('SSE 에러:', error);
                 setIsConnected(false);
                 setIsConnecting(false);
 
@@ -72,7 +65,6 @@ export const useSSE = (userId: string) => {
                 if (error instanceof Event && error.target) {
                     const target = error.target as EventSource;
                     if (target.readyState === EventSource.CLOSED) {
-                        console.log('SSE 연결이 닫혔습니다. 재연결을 시도합니다.');
                         // 3초 후 재연결 시도
                         setTimeout(() => {
                             if (eventSource.current) {
@@ -86,8 +78,7 @@ export const useSSE = (userId: string) => {
 
                 setError('SSE 연결에 실패했습니다.');
             };
-        } catch (error) {
-            console.error('SSE 연결 실패:', error);
+        } catch {
             setIsConnected(false);
             setIsConnecting(false);
             setError('SSE 연결을 초기화할 수 없습니다.');
@@ -96,7 +87,6 @@ export const useSSE = (userId: string) => {
         // 컴포넌트 언마운트 시 연결 해제
         return () => {
             if (eventSource.current) {
-                console.log('SSE 연결 해제');
                 eventSource.current.close();
                 eventSource.current = null;
             }

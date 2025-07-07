@@ -46,9 +46,6 @@ export default function ChatPage() {
 
             switch (lastMessage.type) {
                 case 'JOB_COMPLETED':
-                    console.log('작업 완료!', lastMessage.data.result);
-
-                    // 새로운 assistant 메시지 추가
                     const assistantMessage: ChatMessage = {
                         id: Date.now(),
                         sessionId: currentSession?.id || '',
@@ -197,7 +194,14 @@ export default function ChatPage() {
     };
 
     if (authLoading) {
-        return <div>로그인 확인 중...</div>;
+        return (
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <div className="text-center space-y-4">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+                    <p className="text-muted-foreground">로그인 확인 중...</p>
+                </div>
+            </div>
+        );
     }
     if (!isLoggedIn) {
         return null;
