@@ -6,8 +6,6 @@ import {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_LOCAL_LLM_API_URL;
 
-console.log('API_BASE_URL', API_BASE_URL);
-
 /**
  * 새 대화 시작
  */
@@ -16,7 +14,8 @@ export const startNewChat = async (content: string, userId: string): Promise<Cha
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({ content, userId }),
     });
@@ -37,7 +36,8 @@ export const sendMessage = async (content: string, userId: string, sessionId: st
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({ content, userId, sessionId }),
     });
@@ -55,38 +55,22 @@ export const sendMessage = async (content: string, userId: string, sessionId: st
  */
 export const fetchUserSessions = async (userId: string, limit: number = 10): Promise<ChatSession[]> => {
     const url = `${API_BASE_URL}/api/chat/user/${userId}?limit=${limit}`;
-    console.log('Fetching sessions from:', url);
 
     try {
         const response = await fetch(url, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
             },
         });
 
-        console.log('Response status:', response.status);
-        console.log('Response content-type:', response.headers.get('content-type'));
-        console.log('Response body:', response.body);
-
         if (!response.ok) {
-            const responseText = await response.text();
-            console.error('Session fetch error:', response.status, responseText.substring(0, 200));
             throw new Error(`API request failed with status ${response.status}`);
         }
 
-        const responseText = await response.text();
-
-        try {
-            const data = JSON.parse(responseText);
-            console.log('Sessions fetched successfully:', data);
-            return data;
-        } catch (parseError) {
-            console.error('JSON parse error:', parseError);
-            console.error('Response was not JSON:', responseText.substring(0, 200));
-            throw new Error('서버에서 올바른 JSON 응답을 받지 못했습니다.');
-        }
+        return response.json();
     } catch (error) {
         console.error('Network error while fetching sessions:', error);
         throw error;
@@ -101,7 +85,8 @@ export const fetchSession = async (sessionId: string, userId: string): Promise<C
         method: 'GET',
         headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
         },
     });
 
@@ -121,7 +106,8 @@ export const createSession = async (userId: string, title: string): Promise<Chat
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({ userId, title }),
     });
@@ -142,7 +128,8 @@ export const deleteSession = async (sessionId: string, userId: string): Promise<
         method: 'DELETE',
         headers: {
             'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
         },
         body: JSON.stringify({ userId }),
     });

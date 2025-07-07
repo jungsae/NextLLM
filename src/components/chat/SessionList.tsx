@@ -29,28 +29,17 @@ export function SessionList({
 
     // 세션 목록 로드
     const loadSessions = async () => {
-        console.log('SessionList: loadSessions 시작, userId:', userId);
         try {
             setLoading(true);
             setError(null);
             const data = await fetchUserSessions(userId, 20);
-            console.log('SessionList: fetchUserSessions 완료, data:', data);
-            console.log('SessionList: data 타입:', typeof data);
-            console.log('SessionList: data.length:', data?.length);
-            if (data && data.length > 0) {
-                console.log('SessionList: 첫 번째 세션:', data[0]);
-            }
             setSessions(data);
         } catch (error: any) {
-            // fetchUserSessions에서 이미 빈 배열을 반환하므로 여기서 에러가 발생하지 않음
-            // 하지만 혹시 모를 상황을 대비해 에러 처리 유지
             console.error('세션 목록 로드 실패:', error);
             setError('백엔드 서버에 연결할 수 없습니다.');
-            setSessions([]); // 에러 시 빈 배열로 설정
-            // toast.error('세션 목록을 불러오는데 실패했습니다.'); // 토스트 제거
+            setSessions([]);
         } finally {
             setLoading(false);
-            console.log('SessionList: loadSessions 완료');
         }
     };
 
@@ -106,9 +95,6 @@ export function SessionList({
     useEffect(() => {
         loadSessions();
     }, [userId]);
-
-    // 렌더링 시 상태 확인
-    console.log('SessionList 렌더링 - loading:', loading, 'sessions.length:', sessions.length, 'error:', error);
 
     if (loading) {
         return (
