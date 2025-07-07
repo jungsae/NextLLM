@@ -106,18 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return () => clearInterval(interval);
     }, [auth.isLoggedIn, refreshAuth]);
 
-    // 페이지 포커스 시 인증 상태 재확인
-    useEffect(() => {
-        const handleFocus = () => {
-            if (auth.isLoggedIn) {
-                refreshAuth();
-            }
-        };
-
-        window.addEventListener('focus', handleFocus);
-        return () => window.removeEventListener('focus', handleFocus);
-    }, [auth.isLoggedIn, refreshAuth]);
-
+    // 페이지 포커스 시 인증 상태 재확인 제거 (주기적 확인만 유지)
     return (
         <AuthContext.Provider value={{ ...auth, login, logout, refreshAuth }}>
             {children}

@@ -11,6 +11,7 @@ export const useSSE = (userId: string) => {
     const [isConnecting, setIsConnecting] = useState(false);
     const [lastMessage, setLastMessage] = useState<SSEMessage | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [reconnectKey, setReconnectKey] = useState(0); // 강제 재연결을 위한 키
 
     useEffect(() => {
         if (!userId || userId.trim() === '') {
@@ -53,7 +54,8 @@ export const useSSE = (userId: string) => {
                     }
 
                     setLastMessage(message);
-                } catch {
+                } catch (parseError) {
+                    console.error('SSE 메시지 파싱 실패:', parseError);
                 }
             };
 
@@ -93,7 +95,7 @@ export const useSSE = (userId: string) => {
             setIsConnected(false);
             setIsConnecting(false);
         };
-    }, [userId]);
+    }, [userId, reconnectKey]); // reconnectKey 추가
 
     // 수동 재연결 함수
     const manualReconnect = () => {
@@ -105,13 +107,8 @@ export const useSSE = (userId: string) => {
         setIsConnecting(false);
         setError(null);
 
-        // 강제로 재연결을 위해 useEffect 의존성 변경
-        setTimeout(() => {
-            if (eventSource.current) {
-                eventSource.current.close();
-                eventSource.current = null;
-            }
-        }, 100);
+        // 강제로 재연결을 위해 reconnectKey 변경
+        setReconnectKey(prev => prev + 1);
     };
 
     return {

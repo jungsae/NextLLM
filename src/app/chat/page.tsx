@@ -32,24 +32,41 @@ export default function ChatPage() {
 
     // SSE 메시지 처리
     useEffect(() => {
-        if (lastMessage && currentJob && lastMessage.data.jobId === currentJob.id) {
-            // 메시지 중복 방지를 위한 고유 키 생성
-            const messageKey = `${lastMessage.type}_${lastMessage.data.jobId}_${lastMessage.data.status}`;
+        if (!lastMessage) return;
 
-            // 이미 처리된 메시지인지 확인
-            if (lastProcessedMessageRef.current === messageKey) {
-                return;
-            }
+        // 메시지 중복 방지를 위한 고유 키 생성
+        const messageKey = `${lastMessage.type}_${lastMessage.data?.jobId || 'unknown'}_${lastMessage.data?.status || 'unknown'}`;
 
-            // 메시지 키 저장
-            lastProcessedMessageRef.current = messageKey;
+        // 이미 처리된 메시지인지 확인
+        if (lastProcessedMessageRef.current === messageKey) {
+            return;
+        }
 
-            switch (lastMessage.type) {
-                case 'JOB_COMPLETED':
+        // 메시지 키 저장
+        lastProcessedMessageRef.current = messageKey;
+
+        // jobId 비교 헬퍼 함수
+        const isJobMatch = (messageJobId: any, currentJobId: any) => {
+            if (!messageJobId || !currentJobId) return false;
+            return messageJobId.toString() === currentJobId.toString();
+        };
+
+        switch (lastMessage.type) {
+            case 'JOB_COMPLETED':
+                // 현재 작업과 관련된 메시지인지 확인
+                if (currentJob && isJobMatch(lastMessage.data?.jobId, currentJob.id)) {
+                    // 결과 내용 추출
+                    let content = '응답을 생성할 수 없습니다.';
+                    if (typeof lastMessage.data.result === 'string') {
+                        content = lastMessage.data.result;
+                    } else if (lastMessage.data.result?.content) {
+                        content = lastMessage.data.result.content;
+                    }
+
                     const assistantMessage: ChatMessage = {
                         id: Date.now(),
                         sessionId: currentSession?.id || '',
-                        content: lastMessage.data.result.content || lastMessage.data.result,
+                        content: content,
                         createdAt: new Date().toISOString()
                     };
 
@@ -58,24 +75,40 @@ export default function ChatPage() {
                     setIsLoading(false);
                     setError(null);
                     lastProcessedMessageRef.current = '';
-                    break;
+                }
+                break;
 
-                case 'JOB_FAILED':
-                    console.error('작업 실패!', lastMessage.data.error);
+            case 'JOB_FAILED':
+                // 현재 작업과 관련된 메시지인지 확인
+                if (currentJob && isJobMatch(lastMessage.data?.jobId, currentJob.id)) {
                     setError(lastMessage.data.error || '작업 처리 중 오류가 발생했습니다.');
                     setCurrentJob(null);
                     setIsLoading(false);
                     lastProcessedMessageRef.current = '';
-                    break;
+                }
+                break;
 
-                case 'JOB_UPDATE':
+            case 'JOB_UPDATE':
+                // 현재 작업과 관련된 메시지인지 확인
+                if (currentJob && isJobMatch(lastMessage.data?.jobId, currentJob.id)) {
                     // 상태가 실제로 변경된 경우에만 업데이트
-                    if (currentJob && currentJob.status !== lastMessage.data.status) {
-                        console.log('작업 상태 변경:', lastMessage.data.status);
+                    if (currentJob.status !== lastMessage.data.status) {
                         setCurrentJob(prev => prev ? { ...prev, status: lastMessage.data.status } : null);
                     }
-                    break;
-            }
+                }
+                break;
+
+            case 'QUEUE_UPDATE':
+                // 큐 상태 업데이트는 현재 작업과 무관하게 처리 가능
+                break;
+
+            case 'CONNECTION_ESTABLISHED':
+                // SSE 연결 확립
+                break;
+
+            default:
+                // 처리되지 않은 메시지 타입
+                break;
         }
     }, [lastMessage, currentJob, currentSession]);
 

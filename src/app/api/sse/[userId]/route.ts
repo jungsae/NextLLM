@@ -34,11 +34,10 @@ export async function GET(
         const backendUrl = process.env.NEXT_PUBLIC_LOCAL_LLM_API_URL;
         const backendSseUrl = `${backendUrl}/api/sse/${userId}`;
 
-        console.log('SSE 프록시 연결 시도:', backendSseUrl);
-
         // 인증 헤더 준비
         const authHeaders: Record<string, string> = {
             'Accept': 'text/event-stream',
+            'ngrok-skip-browser-warning': 'true', // ngrok 경고 페이지 우회
         };
 
         // 쿠키에서 인증 토큰 추출하여 백엔드로 전달
@@ -52,6 +51,9 @@ export async function GET(
         if (authHeader) {
             authHeaders['Authorization'] = authHeader;
         }
+
+        // 사용자 ID를 헤더로도 전달 (백엔드에서 필요할 수 있음)
+        authHeaders['X-User-ID'] = userId;
 
         // 백엔드 SSE 스트림을 프론트엔드로 전달
         const stream = new ReadableStream({
@@ -85,7 +87,6 @@ export async function GET(
                             controller.enqueue(value);
                         } catch (error) {
                             if (error instanceof TypeError && error.message.includes('Controller is already closed')) {
-                                console.log('SSE 스트림이 이미 닫혀있습니다. 연결을 종료합니다.');
                                 break;
                             } else {
                                 throw error;
@@ -93,7 +94,6 @@ export async function GET(
                         }
                     }
                 } catch (error) {
-                    console.error('SSE 프록시 에러:', error);
                     controller.error(error);
                 }
             }
@@ -103,8 +103,7 @@ export async function GET(
             headers: SSE_HEADERS,
         });
 
-    } catch (error: any) {
-        console.error('SSE 프록시 초기화 에러:', error);
+    } catch {
         return new NextResponse('Internal Server Error', { status: 500 });
     }
 } 
