@@ -1,7 +1,10 @@
 import {
     ChatSession,
     ChatStartResponse,
-    ChatSendResponse
+    ChatSendResponse,
+    LLMResponse,
+    TokenUsageStats,
+    ModelUsageStats
 } from '@/types/job';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_LOCAL_LLM_API_URL;
@@ -138,4 +141,101 @@ export const deleteSession = async (sessionId: string, userId: string): Promise<
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `API request failed with status ${response.status}`);
     }
+};
+
+/**
+ * LLM 응답 조회
+ */
+export const fetchLLMResponse = async (id: string): Promise<LLMResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/llm-responses/${id}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `API request failed with status ${response.status}`);
+    }
+
+    return response.json();
+};
+
+/**
+ * Job ID로 LLM 응답 조회
+ */
+export const fetchLLMResponseByJobId = async (jobId: number): Promise<LLMResponse> => {
+    const response = await fetch(`${API_BASE_URL}/api/llm-responses/job/${jobId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+        },
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `API request failed with status ${response.status}`);
+    }
+
+    return response.json();
+};
+
+/**
+ * 토큰 사용량 통계 조회
+ */
+export const fetchTokenUsageStats = async (
+    userId: string,
+    startDate: string,
+    endDate: string
+): Promise<TokenUsageStats[]> => {
+    const response = await fetch(
+        `${API_BASE_URL}/api/llm-responses/stats/tokens/${userId}?startDate=${startDate}&endDate=${endDate}`,
+        {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
+        }
+    );
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `API request failed with status ${response.status}`);
+    }
+
+    return response.json();
+};
+
+/**
+ * 모델별 사용량 통계 조회
+ */
+export const fetchModelUsageStats = async (
+    startDate: string,
+    endDate: string
+): Promise<ModelUsageStats[]> => {
+    const response = await fetch(
+        `${API_BASE_URL}/api/llm-responses/stats/models?startDate=${startDate}&endDate=${endDate}`,
+        {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'ngrok-skip-browser-warning': 'true'
+            },
+        }
+    );
+
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `API request failed with status ${response.status}`);
+    }
+
+    return response.json();
 }; 

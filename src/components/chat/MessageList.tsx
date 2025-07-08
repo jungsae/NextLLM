@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { Bot, User } from 'lucide-react';
+import { Bot, User, Cpu, Zap } from 'lucide-react';
 import { ChatMessage } from '@/types/job';
 
 interface MessageListProps {
@@ -40,9 +40,8 @@ export function MessageList({ messages, isLoading, currentJobStatus }: MessageLi
                     <p className="text-sm sm:text-base">첫 번째 질문을 해보세요!</p>
                 </div>
             ) : (
-                messages.map((message, index) => {
-                    // 첫 번째 메시지는 사용자, 두 번째는 AI, 세 번째는 사용자... 순서로 번갈아가며 표시
-                    const isUserMessage = index % 2 === 0;
+                messages.map((message) => {
+                    const isUserMessage = message.role === 'user';
 
                     return (
                         <div
@@ -57,16 +56,36 @@ export function MessageList({ messages, isLoading, currentJobStatus }: MessageLi
 
                             <div
                                 className={`max-w-[75%] sm:max-w-[70%] rounded-lg px-3 py-2 sm:px-4 sm:py-2 break-words ${isUserMessage
-                                        ? 'bg-primary text-primary-foreground'
-                                        : 'bg-muted'
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-muted'
                                     }`}
                             >
                                 <p className="whitespace-pre-wrap break-words text-sm sm:text-base">
                                     {message.content}
                                 </p>
+
+                                {/* LLM 응답 정보 표시 (assistant 메시지에만) */}
+                                {!isUserMessage && message.llmResponse && (
+                                    <div className="mt-2 pt-2 border-t border-muted-foreground/20">
+                                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                            <Cpu className="h-3 w-3" />
+                                            <span>{message.llmResponse.model}</span>
+                                            <span>•</span>
+                                            <Zap className="h-3 w-3" />
+                                            <span>{message.llmResponse.totalTokens.toLocaleString()} 토큰</span>
+                                            {message.llmResponse.finishReason && (
+                                                <>
+                                                    <span>•</span>
+                                                    <span className="capitalize">{message.llmResponse.finishReason}</span>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
                                 <p className={`text-xs mt-1 ${isUserMessage
-                                        ? 'text-primary-foreground/70'
-                                        : 'text-muted-foreground'
+                                    ? 'text-primary-foreground/70'
+                                    : 'text-muted-foreground'
                                     }`}>
                                     {formatTime(message.createdAt)}
                                 </p>

@@ -7,23 +7,48 @@ export interface Job {
         prompt: string;
         // LLM 파라미터는 백엔드에서 관리
     };
-    resultData?: {
-        id: string;
-        model: string;
-        created: number;
-        content: string;
-        finish_reason: string;
-        usage: {
-            prompt_tokens: number;
-            completion_tokens: number;
-            total_tokens: number;
-        };
-    };
+    // resultData 제거 - llmResponse로 대체
+    llmResponse?: LLMResponse;
     errorMessage?: string;
     createdAt: string;
     updatedAt: string;
     startedAt?: string;
     completedAt?: string;
+}
+
+// 새로운 LLM Response 타입
+export interface LLMResponse {
+    id: string;
+    llmResponseId: string;
+    model: string;
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    finishReason: string;
+    createdAt?: string;
+    job?: Job;
+    messages?: ChatMessage[];
+}
+
+// LLM Response 통계 타입
+export interface TokenUsageStats {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    model: string;
+    createdAt: string;
+}
+
+export interface ModelUsageStats {
+    model: string;
+    _count: {
+        model: number;
+    };
+    _sum: {
+        promptTokens: number;
+        completionTokens: number;
+        totalTokens: number;
+    };
 }
 
 export interface WebSocketMessage {
@@ -49,8 +74,13 @@ export interface JobResponse {
 export interface ChatMessage {
     id: number;
     sessionId: string;
+    role: 'user' | 'assistant';
     content: string;
     createdAt: string;
+    llmResponseId?: string;
+    reasoningContent?: string | null;
+    toolCalls?: any | null;
+    llmResponse?: LLMResponse;
 }
 
 export interface ChatSession {

@@ -66,6 +66,7 @@ export default function ChatPage() {
                     const assistantMessage: ChatMessage = {
                         id: Date.now(),
                         sessionId: currentSession?.id || '',
+                        role: 'assistant',
                         content: content,
                         createdAt: new Date().toISOString()
                     };
@@ -204,8 +205,12 @@ export default function ChatPage() {
                 setCurrentSession(newSession);
             }
 
-            // 사용자 메시지 추가
-            setMessages(prev => [...prev, response.userMessage]);
+            // 사용자 메시지에 role 추가
+            const userMessageWithRole = {
+                ...response.userMessage,
+                role: 'user' as const
+            };
+            setMessages(prev => [...prev, userMessageWithRole]);
 
             // 현재 작업 설정
             setCurrentJob({

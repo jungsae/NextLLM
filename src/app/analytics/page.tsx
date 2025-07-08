@@ -1,10 +1,19 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/navigation/navbar';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart3, TrendingUp, MessageSquare, Clock, Users, Activity } from 'lucide-react';
+import { BarChart3, TrendingUp, MessageSquare, Clock, Users, Activity, Cpu, Zap } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { fetchTokenUsageStats, fetchModelUsageStats } from '@/lib/chat-api';
+import { TokenUsageStats, ModelUsageStats } from '@/types/job';
 
 export default function AnalyticsPage() {
+    const { user } = useAuth();
+    const [tokenStats, setTokenStats] = useState<TokenUsageStats[]>([]);
+    const [modelStats, setModelStats] = useState<ModelUsageStats[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
     // 임시 데이터 (나중에 실제 API로 교체)
     const stats = {
         totalChats: 24,
@@ -32,6 +41,38 @@ export default function AnalyticsPage() {
         { topic: 'UI/UX 디자인', count: 3, percentage: 12.5 },
         { topic: '데이터베이스', count: 3, percentage: 12.5 }
     ];
+
+    // 토큰 사용량 통계 로드
+    useEffect(() => {
+        const loadStats = async () => {
+            if (!user?.id) return;
+
+            try {
+                setIsLoading(true);
+                const endDate = new Date().toISOString().split('T')[0];
+                const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+                const [tokenData, modelData] = await Promise.all([
+                    fetchTokenUsageStats(user.id, startDate, endDate),
+                    fetchModelUsageStats(startDate, endDate)
+                ]);
+
+                setTokenStats(tokenData);
+                setModelStats(modelData);
+            } catch (error) {
+                console.error('통계 로드 실패:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadStats();
+    }, [user?.id]);
+
+    // 토큰 사용량 계산
+    const totalTokens = tokenStats.reduce((sum, stat) => sum + stat.totalTokens, 0);
+    const totalPromptTokens = tokenStats.reduce((sum, stat) => sum + stat.promptTokens, 0);
+    const totalCompletionTokens = tokenStats.reduce((sum, stat) => sum + stat.completionTokens, 0);
 
     return (
         <div className="min-h-screen bg-background">
@@ -117,6 +158,126 @@ export default function AnalyticsPage() {
                                     <Users className="h-6 w-6 text-orange-600" />
                                 </div>
                             </div>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* 토큰 사용량 통계 */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Zap className="h-5 w-5" />
+                                토큰 사용량 (최근 30일)
+                            </CardTitle>
+                            <CardDescription>LLM 모델별 토큰 사용량 통계</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {isLoading ? (
+                                <div className="text-center py-8">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                                    <p className="text-sm text-muted-foreground mt-2">통계 로딩 중...</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-3 gap-4 text-center">
+                                        <div>
+                                            <div className="text-2xl font-bold text-blue-600">
+                                                {totalTokens.toLocaleString()}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">총 토큰</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-2xl font-bold text-green-600">
+                                                {totalPromptTokens.toLocaleString()}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">프롬프트</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-2xl font-bold text-purple-600">
+                                                {totalCompletionTokens.toLocaleString()}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">완성</div>
+                                        </div>
+                                    </div>
+
+                                    {tokenStats.length > 0 && (
+                                        <div className="space-y-2">
+                                            <h4 className="text-sm font-medium">최근 사용 내역</h4>
+                                            {tokenStats.slice(0, 5).map((stat, index) => (
+                                                <div key={index} className="flex items-center justify-between text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <Cpu className="h-3 w-3 text-muted-foreground" />
+                                                        <span className="truncate max-w-32">{stat.model}</span>
+                                                    </div>
+                                                    <span className="text-muted-foreground">
+                                                        {stat.totalTokens.toLocaleString()} 토큰
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Cpu className="h-5 w-5" />
+                                모델별 사용량
+                            </CardTitle>
+                            <CardDescription>각 LLM 모델의 사용 빈도 및 토큰 소모량</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            {isLoading ? (
+                                <div className="text-center py-8">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                                    <p className="text-sm text-muted-foreground mt-2">통계 로딩 중...</p>
+                                </div>
+                            ) : modelStats.length > 0 ? (
+                                <div className="space-y-4">
+                                    {modelStats.map((stat, index) => (
+                                        <div key={stat.model} className="space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/20 flex items-center justify-center">
+                                                        <span className="text-xs font-bold text-blue-600">{index + 1}</span>
+                                                    </div>
+                                                    <span className="text-sm font-medium truncate max-w-32">{stat.model}</span>
+                                                </div>
+                                                <span className="text-xs text-muted-foreground">
+                                                    {stat._count.model}회 사용
+                                                </span>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <div className="flex justify-between text-xs">
+                                                    <span>총 토큰</span>
+                                                    <span>{stat._sum.totalTokens.toLocaleString()}</span>
+                                                </div>
+                                                <div className="w-full bg-gray-200 rounded-full h-2">
+                                                    <div
+                                                        className="bg-blue-600 h-2 rounded-full"
+                                                        style={{
+                                                            width: `${(stat._sum.totalTokens / Math.max(...modelStats.map(s => s._sum.totalTokens))) * 100}%`
+                                                        }}
+                                                    ></div>
+                                                </div>
+                                                <div className="flex justify-between text-xs text-muted-foreground">
+                                                    <span>프롬프트: {stat._sum.promptTokens.toLocaleString()}</span>
+                                                    <span>완성: {stat._sum.completionTokens.toLocaleString()}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 text-muted-foreground">
+                                    <Cpu className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                    <p className="text-sm">사용 데이터가 없습니다.</p>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>
